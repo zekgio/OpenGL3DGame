@@ -1,0 +1,30 @@
+# --- Visual Studio (Temporary files and database) ---
+.vs/
+*.user
+*.suo
+*.ipch
+*.aps
+*.opendb
+
+# --- CMake (build folders and cache) ---
+out/
+build/
+cmake-build-*/
+CMakeCache.txt
+CMakeFiles/
+*.cmake
+!CMakeLists.txt
+_deps/
+
+# --- Executables and binaries ---
+*.exe
+*.dll
+*.lib
+*.pdb
+*.ilk
+*.obj
+*.exp
+
+# --- Unused system files ---
+.DS_Store
+Thumbs.db
