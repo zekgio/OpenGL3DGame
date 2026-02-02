@@ -78,8 +78,8 @@ void Game::initShaders()
 
 void Game::initTextures()
 {
-	this->textures.push_back(new Texture("images/dawg.png", GL_TEXTURE_2D) );
-	this->textures.push_back(new Texture("images/dawg_specular.png", GL_TEXTURE_2D));
+	this->textures.push_back(new Texture("images/cat.jpg", GL_TEXTURE_2D) );
+	this->textures.push_back(new Texture("images/cat_specular.jpg", GL_TEXTURE_2D));
 	this->textures.push_back(new Texture("images/box.png", GL_TEXTURE_2D));
 	this->textures.push_back(new Texture("images/box_specular.png", GL_TEXTURE_2D));
 }
@@ -92,6 +92,8 @@ void Game::initMaterials()
 void Game::initModels()
 {
 	std::vector<Mesh*> meshes;
+	std::vector<Mesh*> meshes2;
+
 	Pyramid quad0 = Pyramid();
 	meshes.push_back( new Mesh(
 			&quad0,
@@ -109,6 +111,24 @@ void Game::initModels()
 			glm::vec3(1.f)
 		));
 
+	Quad quad2 = Quad();
+	meshes2.push_back(new Mesh(
+			&quad2,
+			glm::vec3(0.f, -13.f, 0.f),
+			glm::vec3(0.f),
+			glm::vec3(-90.f, 0.f, 0.f),
+			glm::vec3(100.f)
+		));
+
+	this->models.push_back(new Model(
+			glm::vec3(-2.f, 0.f, -2.f), this->materials[MAT_1], this->textures[TEX_BOX],
+			this->textures[TEX_BOX_SPECULAR], "resources/girl.obj", glm::vec3(0.f),
+			glm::vec3(0.f), glm::vec3(0.f), glm::vec3(1.f)
+		));
+	this->models.push_back(new Model(
+			glm::vec3(2.f, 2.f, 2.f), this->materials[MAT_1], this->textures[TEX_BOX],
+			this->textures[TEX_BOX_SPECULAR], "resources/cone.obj"
+		));
 	this->models.push_back(new Model(
 			glm::vec3(0.f), this->materials[MAT_1], this->textures[TEX_BOX],
 			this->textures[TEX_BOX_SPECULAR], meshes
@@ -122,7 +142,14 @@ void Game::initModels()
 			this->textures[TEX_BOX_SPECULAR], meshes
 		));
 
+	this->models.push_back(new Model(
+			glm::vec3(0.f, -2.f, 0.f), this->materials[MAT_1], this->textures[TEX_BOX],
+			this->textures[TEX_BOX_SPECULAR], meshes2
+		));
+
 	for (auto*& i : meshes)
+		delete i;
+	for (auto*& i : meshes2)
 		delete i;
 
 	meshes.clear();
@@ -130,7 +157,20 @@ void Game::initModels()
 
 void Game::initLights()
 {
-	this->lights.push_back(new glm::vec3(0.f, 0.f, 0.9f) );
+	this->initPointLights();
+}
+void Game::initPointLights()
+{
+	this->pointLights.push_back(
+		new PointLight(
+			glm::vec3(0.f),
+			1.f,
+			glm::vec3(1.f,0.5f,0.f),
+			1.f,
+			0.045f,
+			0.0075f
+		)
+	);
 }
 
 void Game::updateUniforms()
@@ -139,7 +179,11 @@ void Game::updateUniforms()
 	this->ViewMatrix = this->camera.getViewMatrix();
 	this->shaders[SHADER_CORE_PROGRAM]->setMat4fv(this->ViewMatrix, "ViewMatrix");
 	this->shaders[SHADER_CORE_PROGRAM]->setVec3f(this->camera.getPosition(), "cameraPos");
-
+	
+	for (PointLight * pl : this->pointLights)
+	{
+		pl->sendToShader(*this->shaders[SHADER_CORE_PROGRAM]);
+	}
 	// Update Projection Matrix
 	this->shaders[SHADER_CORE_PROGRAM]->setMat4fv(this->ProjectionMatrix, "ProjectionMatrix");
 }
@@ -148,7 +192,15 @@ void Game::initUniforms()
 {
 	this->shaders[SHADER_CORE_PROGRAM]->setMat4fv(ViewMatrix, "ViewMatrix");
 	this->shaders[SHADER_CORE_PROGRAM]->setMat4fv(ProjectionMatrix, "ProjectionMatrix");
-	this->shaders[SHADER_CORE_PROGRAM]->setVec3f(*this->lights[0], "lightPos0");
+	
+	for (PointLight* pl : this->pointLights)
+	{
+		pl->sendToShader(*this->shaders[SHADER_CORE_PROGRAM]);
+	}
+}
+
+void Game::initOBJModels()
+{
 }
 
 // Constructors/Destructors
@@ -197,6 +249,7 @@ Game::Game(const char* title,
 	this->initModels();
 	this->initLights();
 	this->initUniforms();
+	this->initOBJModels();
 }
 
 Game::~Game()
@@ -214,8 +267,8 @@ Game::~Game()
 	//	delete this->meshes[i];
 	for (auto& i : this->models)
 		delete i;
-	for (size_t i = 0; i < this->lights.size(); ++i)
-		delete this->lights[i];
+	for (size_t i = 0; i < this->pointLights.size(); ++i)
+		delete this->pointLights[i];
 }
 
 // Accessors
@@ -256,6 +309,12 @@ void Game::updateMouseInput()
 	// Set last X and Y
 	this->lastMouseX = this->mouseX;
 	this->lastMouseY = this->mouseY;
+
+	// Move Light
+	if (glfwGetMouseButton(this->window, GLFW_MOUSE_BUTTON_1) == GLFW_PRESS)
+	{
+		this->pointLights[0]->setPosition( this->camera.getPosition() );
+	}
 }
 
 void Game::updateKeyboardInput()
@@ -308,9 +367,9 @@ void Game::update()
 	this->updateDt();
 	this->updateInput();
 
-	this->models[0]->rotate(glm::vec3(0.f, 1.f, 0.f));
-	this->models[1]->rotate(glm::vec3(0.f, 0.5f, 0.f));
-	this->models[2]->rotate(glm::vec3(0.f, 2.f, 0.f));
+	//this->models[0]->rotate(glm::vec3(0.f, 1.f, 0.f));
+	//this->models[1]->rotate(glm::vec3(0.f, 0.5f, 0.f));
+	//this->models[2]->rotate(glm::vec3(0.f, 2.f, 0.f));
 }
 
 void Game::render()

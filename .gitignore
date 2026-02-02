@@ -22,7 +22,6 @@ _deps/
 *.lib
 *.pdb
 *.ilk
-*.obj
 *.exp
 
 # --- Unused system files ---

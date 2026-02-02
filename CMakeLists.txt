@@ -60,6 +60,7 @@ add_executable(OpenGL3DGame
     "Game.cpp"
     "Camera.h"
     "Model.h"
+    "Light.h"
 )
 
 target_include_directories(OpenGL3DGame PRIVATE

@@ -7,6 +7,7 @@
 #include <fstream>
 #include <string>
 #include <vector>
+#include <algorithm>
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h> 
@@ -28,3 +29,4 @@
 #include "Mesh.h"
 #include "Model.h"
 #include "Primitives.h"
+#include "Light.h"
