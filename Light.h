@@ -1,6 +1,6 @@
 #pragma once
 
-#include "libs.h";
+#include "libs.h"
 
 class Light
 {
