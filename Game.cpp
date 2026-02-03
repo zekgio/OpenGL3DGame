@@ -1,4 +1,5 @@
 #include "Game.h"
+#include "OBJLoader.h"
 
 // Private Functions
 void Game::initGLFW()
@@ -120,22 +121,23 @@ void Game::initModels()
 			glm::vec3(100.f)
 		));
 
-	this->models.push_back(new Model(
+	this->models.push_back( OBJLoader::loadOBJModel(
 			glm::vec3(-2.f, 0.f, -2.f), this->materials[MAT_1], this->textures[TEX_BOX],
 			this->textures[TEX_BOX_SPECULAR], "resources/girl.obj", glm::vec3(0.f),
 			glm::vec3(0.f), glm::vec3(0.f), glm::vec3(1.f)
 		));
-	this->models.push_back(new Model(
-			glm::vec3(2.f, 2.f, 2.f), this->materials[MAT_1], this->textures[TEX_BOX],
-			this->textures[TEX_BOX_SPECULAR], "resources/cone.obj"
-		));
+	this->models.push_back( OBJLoader::loadOBJModel(
+		glm::vec3(2.f, 2.f, 2.f), this->materials[MAT_1], this->textures[TEX_CAT],
+		this->textures[TEX_CAT_SPECULAR], "resources/cat.obj", glm::vec3(0.f, 3.f, -2.f),
+		glm::vec3(0.f), glm::vec3(-90.f, 0.f, 0.f), glm::vec3(0.05f)
+	));
 	this->models.push_back(new Model(
 			glm::vec3(0.f), this->materials[MAT_1], this->textures[TEX_BOX],
 			this->textures[TEX_BOX_SPECULAR], meshes
 		));
 	this->models.push_back(new Model(
-			glm::vec3(2.f, 0.f, 1.f), this->materials[MAT_1], this->textures[TEX_DON],
-			this->textures[TEX_DON_SPECULAR], meshes
+			glm::vec3(2.f, 0.f, 1.f), this->materials[MAT_1], this->textures[TEX_CAT],
+			this->textures[TEX_CAT_SPECULAR], meshes
 		));
 	this->models.push_back(new Model(
 			glm::vec3(0.f, 2.f, 0.f), this->materials[MAT_1], this->textures[TEX_BOX],
@@ -143,9 +145,10 @@ void Game::initModels()
 		));
 
 	this->models.push_back(new Model(
-			glm::vec3(0.f, -2.f, 0.f), this->materials[MAT_1], this->textures[TEX_BOX],
-			this->textures[TEX_BOX_SPECULAR], meshes2
-		));
+		glm::vec3(0.f,-2.f,0.f), this->materials[MAT_1], this->textures[TEX_BOX],
+		this->textures[TEX_BOX_SPECULAR], meshes2
+	));
+	
 
 	for (auto*& i : meshes)
 		delete i;

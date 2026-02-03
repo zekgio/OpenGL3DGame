@@ -10,8 +10,8 @@ enum shader_enum
 };
 enum texture_enum
 {
-	TEX_DON = 0,
-	TEX_DON_SPECULAR = 1,
+	TEX_CAT = 0,
+	TEX_CAT_SPECULAR = 1,
 	TEX_BOX = 2,
 	TEX_BOX_SPECULAR = 3
 };
