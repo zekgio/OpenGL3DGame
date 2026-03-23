@@ -14,13 +14,39 @@ public:
 
 	}
 
-	~Light()
+	virtual ~Light()
 	{
 
 	}
 
 	// Functions
 	virtual void sendToShader(Shader& program) = 0;
+};
+
+class DirectionalLight : public Light
+{
+protected:
+	glm::vec3 direction; // For the omnipotent sun
+
+public:
+	DirectionalLight(glm::vec3 direction, float intensity = 1.f, glm::vec3 color = glm::vec3(1.f))
+		: Light(intensity, color), direction(direction)
+	{
+	}
+
+	~DirectionalLight() {}
+
+	void sendToShader(Shader& program) override
+	{
+		program.setVec3f(this->direction, "dirLight.direction");
+		program.set1f(this->intensity, "dirLight.intensity");
+		program.setVec3f(this->color, "dirLight.color");
+	}
+
+	void setDirection(const glm::vec3 direction)
+	{
+		this->direction = direction;
+	}
 };
 
 class PointLight : public Light

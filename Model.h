@@ -16,6 +16,7 @@ private:
 	std::vector<Mesh*> meshes;
 	glm::vec3 position;
 
+
 	void updateUniforms()
 	{
 
@@ -88,6 +89,17 @@ public:
 	std::vector<Mesh*> getMeshes() const
 	{
 		return this->meshes;
+	}
+
+	void setPosition(const glm::vec3 position)
+	{
+		this->position = position;
+		for (auto& i : this->meshes)
+		{
+			// Update both origin and position of each mesh
+			i->setPosition(this->position);
+			i->setOrigin(this->position);
+		}
 	}
 
 };

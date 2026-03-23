@@ -12,11 +12,17 @@ struct Material
 struct PointLight
 {
     vec3 position;
-	float intensity;
+    float intensity;
 	vec3 color;
 	float constant;
 	float linear;
 	float quadratic;
+};
+
+struct DirLight {
+    vec3 direction;
+    float intensity;
+    vec3 color;
 };
 
 in vec3 vs_position;
@@ -29,57 +35,63 @@ out vec4 fs_color;
 // Uniforms
 uniform Material material;
 uniform PointLight pointLight;
+uniform DirLight dirLight;
 uniform vec3 cameraPos;
 
-// Functions
-vec3 computeAmbient(Material material)
+vec3 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir)
 {
-	return material.ambient;
+    vec3 lightDir = normalize(-light.direction);
+    
+    // Diffuse
+    float diffCoeff = max(dot(normal, lightDir), 0.0);
+    vec3 diffuse = light.color * light.intensity * material.diffuse * diffCoeff;
+    
+    // Specular
+    vec3 reflectDir = reflect(-lightDir, normal);
+    float specCoeff = pow(max(dot(viewDir, reflectDir), 0.0), 30.0);
+    vec3 specular = light.color * light.intensity * material.specular * specCoeff;
+    
+    return (diffuse + specular);
 }
 
-vec3 computeDiffuse(Material material, vec3 vs_position, vec3 vs_normal, vec3 lightPos)
+vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir)
 {
-	vec3 posToLightDirVec = normalize(lightPos - vs_position);
-	float diffuseCoeff = clamp(dot(posToLightDirVec, normalize(vs_normal)), 0, 1);
-	return material.diffuse * diffuseCoeff;
-}
-
-vec3 computeSpecular(Material material, vec3 vs_position, vec3 vs_normal, vec3 lightPos, vec3 cameraPos)
-{
-	vec3 lightToPosDirVec = normalize(vs_position - pointLight.position);
-	vec3 reflectDirVec = normalize(reflect(lightToPosDirVec, normalize(vs_normal)));
-	vec3 posToViewDirVec = normalize(cameraPos - vs_position);
-	float specularConstant = pow(max(dot(posToViewDirVec, reflectDirVec), 0), 30);
-	//return material.specular * specularConstant * texture(material.specular_tex, vs_texcoord).rgb;
-	return material.specular * specularConstant;
+    vec3 lightDir = normalize(light.position - fragPos);
+    
+    // Diffuse
+    float diffCoeff = max(dot(normal, lightDir), 0.0);
+    vec3 diffuse = light.color * light.intensity * material.diffuse * diffCoeff;
+    
+    // Specular
+    vec3 reflectDir = reflect(-lightDir, normal);
+    float specCoeff = pow(max(dot(viewDir, reflectDir), 0.0), 30.0);
+    vec3 specular = light.color * light.intensity * material.specular * specCoeff;
+    
+    // Attenuation
+    float distance = length(light.position - fragPos);
+    float attenuation = 1.0 / (light.constant + light.linear * distance + light.quadratic * (distance * distance));
+    
+    return (diffuse + specular) * attenuation;
 }
 
 // Main
 void main()
 {
-	// fs_color = vec4(vs_color, 1.f);
-
-	// Ambient light (if no lights you show it very dim)
-	vec3 ambientFinal = computeAmbient(material);
-
-	// Diffuse light
-	vec3 diffuseFinal = computeDiffuse(material, vs_position, vs_normal, pointLight.position);
-
-	// Specular light
-	vec3 specularFinal = computeSpecular(material, vs_position, vs_normal, pointLight.position, cameraPos);
-
-	// Attenuation
-	float distance = length(pointLight.position - vs_position);
-	// Constant, Linear, Quadratic
-	float attenuation = 1.f / (pointLight.constant + pointLight.linear * distance + pointLight.quadratic * (distance*distance));
-
-	// Final light
-	ambientFinal *= attenuation;
-	diffuseFinal *= attenuation;
-	specularFinal *= attenuation;
-	fs_color = 
-		//texture(material.diffuse_tex, vs_texcoord) *
-		//vec4(vs_color, 1.f) *
-		vec4(pointLight.color, 1.f) *
-		(vec4(ambientFinal, 1.f) + vec4(diffuseFinal, 1.f) + vec4(specularFinal, 1.f));
+    vec3 norm = normalize(vs_normal);
+    vec3 viewDir = normalize(cameraPos - vs_position);
+    
+    // Hemispheric lighting: compute factor based on the normal's y component
+    float skyFactor = (norm.y + 1.0) * 0.5; 
+    
+    vec3 skyColor = vec3(0.4, 0.6, 0.8);
+    vec3 groundColor = vec3(0.15, 0.1, 0.1);
+    
+    vec3 ambient = mix(groundColor, skyColor, skyFactor) * 0.7; // 0.7 is the general intensity
+    
+    vec3 result = ambient;
+    result += CalcDirLight(dirLight, norm, viewDir);
+    result += CalcPointLight(pointLight, norm, vs_position, viewDir);
+    
+    vec4 texColor = texture(material.diffuse_tex, vs_texcoord);
+    fs_color = texColor * vec4(result, 1.0);
 }

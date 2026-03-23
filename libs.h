@@ -30,3 +30,5 @@
 #include "Model.h"
 #include "Primitives.h"
 #include "Light.h"
+#include "Camera.h"
+#include "Chunk.h"

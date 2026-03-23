@@ -1,7 +1,6 @@
 #pragma once
 
 #include "libs.h"
-#include "Camera.h"
 
 // ENUMS
 enum shader_enum
@@ -13,7 +12,9 @@ enum texture_enum
 	TEX_CAT = 0,
 	TEX_CAT_SPECULAR = 1,
 	TEX_BOX = 2,
-	TEX_BOX_SPECULAR = 3
+	TEX_BOX_SPECULAR = 3,
+	TEX_ATLAS = 4,
+	TEX_ATLAS_SPECULAR = 5
 };
 enum material_enum
 {
@@ -46,7 +47,6 @@ private:
 	Camera camera;
 	// Matrices
 	glm::mat4 ViewMatrix;
-	glm::vec3 camPosition;
 	glm::vec3 worldUp;
 	glm::vec3 camFront;
 	glm::mat4 ProjectionMatrix;
@@ -57,10 +57,14 @@ private:
 	std::vector<Texture*> textures;
 	// Materials
 	std::vector<Material*> materials;
-	// Model
+	// Models
 	std::vector<Model*> models;
 	// Lights
 	std::vector<PointLight*> pointLights;
+	DirectionalLight* dirLight;
+	// Chunk and Base Models
+	Chunk* myChunk;
+	Model* chunkModel;
 
 // Private Functions
 	void initGLFW();

@@ -42,6 +42,20 @@ list(APPEND LIBS soil2)
 CPMAddPackage("gh:g-truc/glm#e7970a8")
 list(APPEND LIBS glm::glm)
 
+# --- FastNoiseLite ---
+CPMAddPackage(
+    NAME FastNoiseLite
+    GITHUB_REPOSITORY Auburn/FastNoiseLite
+    GIT_TAG master
+    DOWNLOAD_ONLY YES
+)
+if (FastNoiseLite_ADDED)
+    add_library(FastNoiseLite INTERFACE)
+    target_include_directories(FastNoiseLite INTERFACE ${FastNoiseLite_SOURCE_DIR}/Cpp)
+    add_library(FastNoiseLite::FastNoiseLite ALIAS FastNoiseLite)
+endif()
+list(APPEND LIBS FastNoiseLite::FastNoiseLite)
+
 # --- OpenGL ---
 find_package(OpenGL REQUIRED)
 
@@ -61,6 +75,7 @@ add_executable(OpenGL3DGame
     "Camera.h"
     "Model.h"
     "Light.h"
+    "Chunk.h"
 )
 
 target_include_directories(OpenGL3DGame PRIVATE

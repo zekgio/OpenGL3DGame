@@ -61,8 +61,6 @@ void Game::initOpenGLOptions()
 void Game::initMatrices()
 {
 	this->ViewMatrix = glm::mat4(1.f);
-	this->ViewMatrix = glm::lookAt(this->camPosition,
-		this->camPosition + this->camFront, this->worldUp);
 
 	this->ProjectionMatrix = glm::mat4(1.f);
 	ProjectionMatrix = glm::perspective(glm::radians(this->fov),
@@ -83,84 +81,48 @@ void Game::initTextures()
 	this->textures.push_back(new Texture("images/cat_specular.jpg", GL_TEXTURE_2D));
 	this->textures.push_back(new Texture("images/box.png", GL_TEXTURE_2D));
 	this->textures.push_back(new Texture("images/box_specular.png", GL_TEXTURE_2D));
+	this->textures.push_back(new Texture("images/atlas.jpg", GL_TEXTURE_2D));
+	this->textures.push_back(new Texture("images/atlas_specular.jpg", GL_TEXTURE_2D));
 }
 
 void Game::initMaterials()
 {
-	this->materials.push_back(new Material(glm::vec3(0.1f), glm::vec3(1.0f), glm::vec3(1.0f), 0, 1 ));
+	// Ordine: Ambient, Diffuse, Specular, diffuse_tex, specular_tex
+	// Impostiamo lo specular a vec3(0.0f) per rendere i blocchi di terra opachi!
+	this->materials.push_back(new Material(glm::vec3(0.1f), glm::vec3(1.0f), glm::vec3(0.0f), 0, 1));
 }
 
 void Game::initModels()
 {
-	std::vector<Mesh*> meshes;
-	std::vector<Mesh*> meshes2;
+	// Inizializza i dati del chunk
+	this->myChunk = new Chunk();
 
-	Pyramid quad0 = Pyramid();
-	meshes.push_back( new Mesh(
-			&quad0,
-			glm::vec3(1.f, 0.f, 0.f),
-			glm::vec3(0.f),
-			glm::vec3(0.f),
-			glm::vec3(1.f)
-		));
-	Quad quad1 = Quad();
-	meshes.push_back(new Mesh(
-			&quad1,
-			glm::vec3(0.f, 0.f, 0.f),
-			glm::vec3(0.f),
-			glm::vec3(0.f),
-			glm::vec3(1.f)
-		));
+	// Lascia che il chunk costruisca l'unica mega-mesh ottimizzata!
+	Mesh* chunkMesh = this->myChunk->buildMesh();
 
-	Quad quad2 = Quad();
-	meshes2.push_back(new Mesh(
-			&quad2,
-			glm::vec3(0.f, -13.f, 0.f),
-			glm::vec3(0.f),
-			glm::vec3(-90.f, 0.f, 0.f),
-			glm::vec3(100.f)
-		));
+	std::vector<Mesh*> meshesToPass;
+	meshesToPass.push_back(chunkMesh);
 
-	this->models.push_back( OBJLoader::loadOBJModel(
-			glm::vec3(-2.f, 0.f, -2.f), this->materials[MAT_1], this->textures[TEX_BOX],
-			this->textures[TEX_BOX_SPECULAR], "resources/girl.obj", glm::vec3(0.f),
-			glm::vec3(0.f), glm::vec3(0.f), glm::vec3(1.f)
-		));
-	this->models.push_back( OBJLoader::loadOBJModel(
-		glm::vec3(2.f, 2.f, 2.f), this->materials[MAT_1], this->textures[TEX_CAT],
-		this->textures[TEX_CAT_SPECULAR], "resources/cat.obj", glm::vec3(0.f, 3.f, -2.f),
-		glm::vec3(0.f), glm::vec3(-90.f, 0.f, 0.f), glm::vec3(0.05f)
-	));
-	this->models.push_back(new Model(
-			glm::vec3(0.f), this->materials[MAT_1], this->textures[TEX_BOX],
-			this->textures[TEX_BOX_SPECULAR], meshes
-		));
-	this->models.push_back(new Model(
-			glm::vec3(2.f, 0.f, 1.f), this->materials[MAT_1], this->textures[TEX_CAT],
-			this->textures[TEX_CAT_SPECULAR], meshes
-		));
-	this->models.push_back(new Model(
-			glm::vec3(0.f, 2.f, 0.f), this->materials[MAT_1], this->textures[TEX_BOX],
-			this->textures[TEX_BOX_SPECULAR], meshes
-		));
+	// Crea il Modello usando la texture Atlas
+	this->chunkModel = new Model(
+		glm::vec3(0.f),
+		this->materials[MAT_1],
+		this->textures[TEX_ATLAS],
+		this->textures[TEX_ATLAS_SPECULAR],
+		meshesToPass
+	);
 
-	this->models.push_back(new Model(
-		glm::vec3(0.f,-2.f,0.f), this->materials[MAT_1], this->textures[TEX_BOX],
-		this->textures[TEX_BOX_SPECULAR], meshes2
-	));
-	
-
-	for (auto*& i : meshes)
-		delete i;
-	for (auto*& i : meshes2)
-		delete i;
-
-	meshes.clear();
+	// Pulizia del vettore temporaneo
+	meshesToPass.clear();
 }
 
 void Game::initLights()
 {
 	this->initPointLights();
+
+	// Direzione: Punta verso il basso (-Y), un po' a sinistra (-X) e in avanti (-Z)
+	// Colore: Un bianco caldo leggermente giallino (1.0, 0.95, 0.8)
+	this->dirLight = new DirectionalLight(glm::vec3(-0.2f, -1.0f, -0.3f), 0.7f, glm::vec3(1.0f, 0.95f, 0.8f));
 }
 void Game::initPointLights()
 {
@@ -168,7 +130,7 @@ void Game::initPointLights()
 		new PointLight(
 			glm::vec3(0.f),
 			1.f,
-			glm::vec3(1.f,0.5f,0.f),
+			glm::vec3(1.f,1.f,1.f),
 			1.f,
 			0.045f,
 			0.0075f
@@ -187,6 +149,7 @@ void Game::updateUniforms()
 	{
 		pl->sendToShader(*this->shaders[SHADER_CORE_PROGRAM]);
 	}
+	this->dirLight->sendToShader(*this->shaders[SHADER_CORE_PROGRAM]);
 	// Update Projection Matrix
 	this->shaders[SHADER_CORE_PROGRAM]->setMat4fv(this->ProjectionMatrix, "ProjectionMatrix");
 }
@@ -200,6 +163,7 @@ void Game::initUniforms()
 	{
 		pl->sendToShader(*this->shaders[SHADER_CORE_PROGRAM]);
 	}
+	this->dirLight->sendToShader(*this->shaders[SHADER_CORE_PROGRAM]);
 }
 
 void Game::initOBJModels()
@@ -212,7 +176,7 @@ Game::Game(const char* title,
 	const int GLverMaj, const int GLverMin,
 	bool resizable) :
 	WIN_W(width), WIN_H(height), GL_VERSION_MAJOR(GLverMaj), GL_VERSION_MINOR(GLverMin),
-	camera(glm::vec3(0.f,0.f,1.f), glm::vec3(0.f, 0.f, 1.f), glm::vec3(0.f, 1.f, 0.f))
+	camera(glm::vec3(5.f,55.f,5.f), glm::vec3(0.f, 0.f, 1.f), glm::vec3(0.f, 1.f, 0.f))
 {
 	// Init Variables
 	this->window = nullptr;
@@ -221,7 +185,6 @@ Game::Game(const char* title,
 
 	this->worldUp = glm::vec3(0.f, 1.f, 0.f);
 	this->camFront = glm::vec3(0.f, 0.f, -1.f);
-	this->camPosition = glm::vec3(0.f, 0.f, 1.f);
 
 	this->fov = 90.f;
 	this->nearPlane = 0.1f;
@@ -252,7 +215,7 @@ Game::Game(const char* title,
 	this->initModels();
 	this->initLights();
 	this->initUniforms();
-	this->initOBJModels();
+	//this->initOBJModels();
 }
 
 Game::~Game()
@@ -272,6 +235,10 @@ Game::~Game()
 		delete i;
 	for (size_t i = 0; i < this->pointLights.size(); ++i)
 		delete this->pointLights[i];
+
+	delete this->myChunk;
+	delete this->chunkModel;
+	delete this->dirLight;
 }
 
 // Accessors
@@ -328,30 +295,40 @@ void Game::updateKeyboardInput()
 		glfwSetWindowShouldClose(this->window, GLFW_TRUE);
 	}
 
+	float speedMultiplier = 1.0f;
+	if (glfwGetKey(this->window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)
+	{
+		speedMultiplier = 5.0f;
+	}
+	float finalDt = this->dt * speedMultiplier;
+
 	// Movement
 	if (glfwGetKey(this->window, GLFW_KEY_W) == GLFW_PRESS)
 	{
-		this->camera.move(dt, FORWARD);
+		this->camera.move(finalDt, FORWARD);
 	}
 	if (glfwGetKey(this->window, GLFW_KEY_A) == GLFW_PRESS)
 	{
-		this->camera.move(dt, LEFT);
+		this->camera.move(finalDt, LEFT);
 	}
 	if (glfwGetKey(this->window, GLFW_KEY_S) == GLFW_PRESS)
 	{
-		this->camera.move(dt, BACKWARD);
+		this->camera.move(finalDt, BACKWARD);
 	}
 	if (glfwGetKey(this->window, GLFW_KEY_D) == GLFW_PRESS)
 	{
-		this->camera.move(dt, RIGHT);
+		this->camera.move(finalDt, RIGHT);
 	}
 	if (glfwGetKey(this->window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
 	{
-		this->camera.move(dt, DOWN);
+		this->camera.move(finalDt, DOWN);
 	}
 	if (glfwGetKey(this->window, GLFW_KEY_SPACE) == GLFW_PRESS)
 	{
-		this->camera.move(dt, UP);
+		this->camera.move(finalDt, UP);
+	}
+	if (glfwGetKey(this->window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)
+	{
 	}
 }
 
@@ -369,26 +346,20 @@ void Game::update()
 	// Update Input
 	this->updateDt();
 	this->updateInput();
-
-	//this->models[0]->rotate(glm::vec3(0.f, 1.f, 0.f));
-	//this->models[1]->rotate(glm::vec3(0.f, 0.5f, 0.f));
-	//this->models[2]->rotate(glm::vec3(0.f, 2.f, 0.f));
 }
 
 void Game::render()
 {
-	// Draw
-	glClearColor(0.f, 0.0f, 0.f, 1.f);
+	glClearColor(0.2f, 0.6f, 0.8f, 1.f); // Changes 'background' color
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
-	// Update Uniforms
 	this->updateUniforms();
 
-	// Render Models
-	for (auto& i : this->models)
-		i->render(this->shaders[SHADER_CORE_PROGRAM]);
-	
-	// End Draw
+	// Update chunks
+	if (this->chunkModel != nullptr) {
+		this->chunkModel->render(this->shaders[SHADER_CORE_PROGRAM]);
+	}
+
 	glfwSwapBuffers(window);
 	glFlush();
 

@@ -102,7 +102,7 @@ public:
 
 	void updateMouseInput(const float& dt, const double& offsetX, const double& offsetY)
 	{
-		// Update Pitch Yaw ans Roll
+		// Update Pitch Yaw and Roll
 		this->pitch += static_cast<GLfloat>(offsetY) * this->sensitivity * dt;
 		this->yaw += static_cast<GLfloat>(offsetX) * this->sensitivity * dt;
 		
