@@ -76,7 +76,7 @@ add_executable(OpenGL3DGame
     "Model.h"
     "Light.h"
     "Chunk.h"
-)
+ "Constants.h")
 
 target_include_directories(OpenGL3DGame PRIVATE
     "${glew_SOURCE_DIR}/include"

@@ -1,9 +1,17 @@
 ﻿#include "Game.h"
+#include "Constants.h"
 
 // Access Point To The Game
 int main()
 {
-	Game game("OpenGL tutorial", 1280, 720, 4, 5, false);
+	Game game(
+		"OpenGL tutorial",
+		Constants::Screen::DEFAULT_WIDTH,
+		Constants::Screen::DEFAULT_HEIGHT,
+		Constants::OpenGL::DEFAULT_GL_VERSION_MAJOR,
+		Constants::OpenGL::DEFAULT_GL_VERSION_MINOR,
+		false
+	);
 
 	// LOOP
 	while (!game.getWindowShouldClose())

@@ -5,23 +5,28 @@
 
 // Block types
 enum BlockType : uint8_t {
-	AIR = 0,
+	AIR   = 0,
 	GRASS = 1,
-	DIRT = 2,
+	DIRT  = 2,
 	STONE = 3
 };
 
 // Directions for faces
 enum class FaceDirection {
-	FRONT, BACK, LEFT, RIGHT, TOP, BOTTOM
+	FRONT	= 0,
+	BACK	= 1,
+	LEFT	= 2,
+	RIGHT	= 3,
+	TOP		= 4,
+	BOTTOM	= 5
 };
 
 class Chunk
 {
 public:
-	static const int CHUNK_WIDTH = 128;
-	static const int CHUNK_HEIGHT = 200;
-	static const int CHUNK_DEPTH = 128;
+	static const int CHUNK_WIDTH = 32;
+	static const int CHUNK_HEIGHT = 256;
+	static const int CHUNK_DEPTH = 32;
 
 	uint8_t blocks[CHUNK_WIDTH * CHUNK_HEIGHT * CHUNK_DEPTH];
 
@@ -30,19 +35,19 @@ public:
 		// 1. Noise for terrain height (2D)
 		FastNoiseLite terrainNoise;
 		terrainNoise.SetNoiseType(FastNoiseLite::NoiseType_Perlin);
-		terrainNoise.SetFrequency(0.05f);
+		terrainNoise.SetFrequency(0.06f);
 
 		// 2. Noise for caverns and holes (3D)
 		FastNoiseLite caveNoise;
 		caveNoise.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2); // Simplex is great for tunnels
-		caveNoise.SetFrequency(0.05f);
+		caveNoise.SetFrequency(0.04f);
 
 		for (int x = 0; x < CHUNK_WIDTH; ++x) {
 			for (int z = 0; z < CHUNK_DEPTH; ++z) {
 
 				// Base Height
 				float tNoise = terrainNoise.GetNoise((float)x, (float)z);
-				int surfaceHeight = 45 + (int)(tNoise * 40);
+				int surfaceHeight = 80 + (int)(tNoise * 40);
 
 				// Variation of dirt width
 				float dirtNoise = terrainNoise.GetNoise((float)x + 100.f, (float)z + 100.f);
@@ -93,6 +98,14 @@ public:
 		return blocks[getIndex(x, y, z)];
 	}
 
+	void setBlock(int x, int y, int z, uint8_t type) {
+		// Safety check for bounds
+		if (x < 0 || x >= CHUNK_WIDTH || y < 0 || y >= CHUNK_HEIGHT || z < 0 || z >= CHUNK_DEPTH) {
+			return;
+		}
+		blocks[getIndex(x, y, z)] = type;
+	}
+
 	// Function to choose the correct atlas texture index based on block type and face direction
 	int getTextureIndex(uint8_t type, FaceDirection face) {
 		if (type == BlockType::DIRT) return 2;
@@ -111,6 +124,10 @@ public:
 		std::vector<Vertex> vertices;
 		std::vector<GLuint> indices;
 		GLuint indexCount = 0;
+
+		// Reserve "reasonable" size
+		vertices.reserve(10000);
+		indices.reserve(15000);
 
 		glm::vec3 c(1.0f); // Default white
 

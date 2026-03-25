@@ -73,6 +73,8 @@ void Game::initShaders()
 	this->shaders.push_back( new Shader( this->GL_VERSION_MAJOR,
 		this->GL_VERSION_MINOR, "resources/vertex_core.glsl",
 		"resources/fragment_core.glsl") );
+	this->uiShader = new Shader(this->GL_VERSION_MAJOR, this->GL_VERSION_MINOR,
+		"resources/vertex_ui.glsl", "resources/fragment_ui.glsl");
 }
 
 void Game::initTextures()
@@ -89,7 +91,7 @@ void Game::initMaterials()
 {
 	// Ordine: Ambient, Diffuse, Specular, diffuse_tex, specular_tex
 	// Impostiamo lo specular a vec3(0.0f) per rendere i blocchi di terra opachi!
-	this->materials.push_back(new Material(glm::vec3(0.1f), glm::vec3(1.0f), glm::vec3(0.0f), 0, 1));
+	this->materials.push_back(new Material(glm::vec3(0.1f), glm::vec3(1.0f), glm::vec3(1.f), 0, 1));
 }
 
 void Game::initModels()
@@ -114,6 +116,83 @@ void Game::initModels()
 
 	// Pulizia del vettore temporaneo
 	meshesToPass.clear();
+
+	// MARKER INITIALIZATION
+	float size = 0.03f;       // Arm length
+	float thickness = 0.002f; // Arm Width
+	glm::vec3 white(1.0f);
+	glm::vec3 n(0, 0, 1);     // Fictitious normal 
+	glm::vec2 t(0, 0);        // Fictitious UV 
+
+	Vertex v[] = {
+		// Horizontal Bar
+		{glm::vec3(-size, -thickness, 0.f), white, t, n},
+		{glm::vec3(size, -thickness, 0.f), white, t, n},
+		{glm::vec3(size,  thickness, 0.f), white, t, n},
+		{glm::vec3(-size,  thickness, 0.f), white, t, n},
+
+		// Vertical Bar
+		{glm::vec3(-thickness, -size, 0.f), white, t, n},
+		{glm::vec3(thickness, -size, 0.f), white, t, n},
+		{glm::vec3(thickness,  size, 0.f), white, t, n},
+		{glm::vec3(-thickness,  size, 0.f), white, t, n}
+	};
+
+	GLuint indices[] = {
+		0, 1, 2, 2, 3, 0, // Horizontal Rectangle
+		4, 5, 6, 6, 7, 4  // Verticale Rectangle
+	};
+
+	this->crosshairMesh = new Mesh(v, 8, indices, 12);
+
+	// HOTBAR
+	glm::vec3 darkGray(0.2f, 0.2f, 0.2f);
+
+	// 1. Hotbar Background
+	Vertex bgVerts[] = {
+		{glm::vec3(-0.45f, -0.95f, 0.f), darkGray, t, n},
+		{glm::vec3( 0.45f, -0.95f, 0.f), darkGray, t, n},
+		{glm::vec3( 0.45f, -0.85f, 0.f), darkGray, t, n},
+		{glm::vec3(-0.45f, -0.85f, 0.f), darkGray, t, n}
+	};
+	GLuint quadIndices[] = { 0, 1, 2, 2, 3, 0 };
+	this->hotbarBgMesh = new Mesh(bgVerts, 4, quadIndices, 6);
+
+	// 2. Selector
+	Vertex selVerts[] = {
+		{glm::vec3(-0.46f, -0.96f, 0.f), white, t, n},
+		{glm::vec3(-0.34f, -0.96f, 0.f), white, t, n},
+		{glm::vec3(-0.34f, -0.84f, 0.f), white, t, n},
+		{glm::vec3(-0.46f, -0.84f, 0.f), white, t, n}
+	};
+	this->hotbarSelectorMesh = new Mesh(selVerts, 4, quadIndices, 6);
+
+	// ISOMETRIC BLOCK ICONS
+	Chunk* tempChunk = new Chunk();
+	// Empty chunk
+	for (int i = 0; i < Chunk::CHUNK_WIDTH * Chunk::CHUNK_HEIGHT * Chunk::CHUNK_DEPTH; ++i) {
+		tempChunk->blocks[i] = BlockType::AIR;
+	}
+
+	// 1. Grass
+	tempChunk->setBlock(0, 0, 0, BlockType::GRASS);
+	this->iconGrass = tempChunk->buildMesh();
+	this->iconGrass->setRotation(glm::vec3(25.f, 45.f, 0.f)); // Rotation
+	this->iconGrass->setScale(glm::vec3(0.06f)); // Scale
+
+	// 2. Dirt
+	tempChunk->setBlock(0, 0, 0, BlockType::DIRT);
+	this->iconDirt = tempChunk->buildMesh();
+	this->iconDirt->setRotation(glm::vec3(25.f, 45.f, 0.f));
+	this->iconDirt->setScale(glm::vec3(0.06f));
+
+	// 3. Stone
+	tempChunk->setBlock(0, 0, 0, BlockType::STONE);
+	this->iconStone = tempChunk->buildMesh();
+	this->iconStone->setRotation(glm::vec3(25.f, 45.f, 0.f));
+	this->iconStone->setScale(glm::vec3(0.06f));
+
+	delete tempChunk;
 }
 
 void Game::initLights()
@@ -176,23 +255,24 @@ Game::Game(const char* title,
 	const int GLverMaj, const int GLverMin,
 	bool resizable) :
 	WIN_W(width), WIN_H(height), GL_VERSION_MAJOR(GLverMaj), GL_VERSION_MINOR(GLverMin),
-	camera(glm::vec3(5.f,55.f,5.f), glm::vec3(0.f, 0.f, 1.f), glm::vec3(0.f, 1.f, 0.f))
+	camera(glm::vec3(5.f,90.f,5.f), glm::vec3(0.f, 0.f, 1.f), glm::vec3(0.f, 1.f, 0.f))
 {
 	// Init Variables
-	this->window = nullptr;
+	this->window	   = nullptr;
 	this->frameBufferW = this->WIN_W;
 	this->frameBufferH = this->WIN_H;
 
-	this->worldUp = glm::vec3(0.f, 1.f, 0.f);
+	this->worldUp  = glm::vec3(0.f, 1.f, 0.f);
 	this->camFront = glm::vec3(0.f, 0.f, -1.f);
 
-	this->fov = 90.f;
-	this->nearPlane = 0.1f;
-	this->farPlane = 1000.f;
+	this->fov		= Constants::Camera::DEFAULT_FOV;
+	this->nearPlane = Constants::Camera::NEAR_PLANE;
+	this->farPlane  = Constants::Camera::FAR_PLANE;
 
-	this->dt = 0.0f;
-	this->currTime = 0.0f;
-	this->lastTime = 0.0f;
+	this->dt			= 0.0f;
+	this->currTime		= 0.0f;
+	this->lastTime		= 0.0f;
+	this->clickCooldown = 0.0f;
 
 	this->lastMouseX = 0.0f;
 	this->lastMouseY = 0.0f;
@@ -201,6 +281,8 @@ Game::Game(const char* title,
 	this->mouseOffsetX = 0.0f;
 	this->mouseOffsetY = 0.0f;
 	this->firstMouse = true;
+
+	this->activeSlot = 0;
 
 	// Init System
 	this->initGLFW();
@@ -239,6 +321,12 @@ Game::~Game()
 	delete this->myChunk;
 	delete this->chunkModel;
 	delete this->dirLight;
+	delete this->hotbarBgMesh;
+	delete this->hotbarSelectorMesh;
+	delete this->crosshairMesh;
+	delete this->iconGrass;
+	delete this->iconDirt;
+	delete this->iconStone;
 }
 
 // Accessors
@@ -280,10 +368,93 @@ void Game::updateMouseInput()
 	this->lastMouseX = this->mouseX;
 	this->lastMouseY = this->mouseY;
 
+	/*
 	// Move Light
 	if (glfwGetMouseButton(this->window, GLFW_MOUSE_BUTTON_1) == GLFW_PRESS)
 	{
 		this->pointLights[0]->setPosition( this->camera.getPosition() );
+	}
+	*/
+
+	// Click Cooldown
+	if (this->clickCooldown > 0.0f) {
+		this->clickCooldown -= this->dt;
+	}
+
+	// RAYCASTING
+	if (this->clickCooldown <= 0.0f)
+	{
+		bool leftClick = glfwGetMouseButton(this->window, GLFW_MOUSE_BUTTON_1) == GLFW_PRESS;
+		bool rightClick = glfwGetMouseButton(this->window, GLFW_MOUSE_BUTTON_2) == GLFW_PRESS;
+
+		if (leftClick || rightClick)
+		{
+			this->clickCooldown = 0.2f; // 200 ms cooldown
+
+			glm::vec3 rayPos = this->camera.getPosition();
+			glm::vec3 rayDir = this->camera.getFront();
+			float stepSize = 0.05f; // Ray precision
+			float reach = 6.0f;     // Range (in blocks)
+
+			glm::vec3 lastEmptyPos = rayPos;
+			bool hit = false;
+			int hitX, hitY, hitZ;          // Coords of hit block
+			int lastX, lastY, lastZ;       // Coords of last empty block
+
+			// Ray advancement loop
+			for (float d = 0; d < reach; d += stepSize)
+			{
+				rayPos += rayDir * stepSize;
+
+				// Round position (Cube goes from -0.5 to +0.5 relatively to its centre)
+				int cx = (int)std::round(rayPos.x);
+				int cy = (int)std::round(rayPos.y);
+				int cz = (int)std::round(rayPos.z);
+
+				if (this->myChunk->getBlock(cx, cy, cz) != BlockType::AIR)
+				{
+					hit = true;
+					hitX = cx; hitY = cy; hitZ = cz;
+
+					lastX = (int)std::round(lastEmptyPos.x);
+					lastY = (int)std::round(lastEmptyPos.y);
+					lastZ = (int)std::round(lastEmptyPos.z);
+					break;
+				}
+				lastEmptyPos = rayPos; // Save empty pos
+			}
+
+			if (hit)
+			{
+				if (leftClick) {
+					// Break
+					this->myChunk->setBlock(hitX, hitY, hitZ, BlockType::AIR);
+				}
+				else if (rightClick) {
+					// Place
+					uint8_t blockToPlace = this->hotbarBlocks[this->activeSlot];
+					if (blockToPlace != BlockType::AIR) {
+						this->myChunk->setBlock(lastX, lastY, lastZ, blockToPlace);
+					}
+				}
+
+				// MESH RECONSTRUCTION
+				delete this->chunkModel;
+
+				Mesh* newChunkMesh = this->myChunk->buildMesh();
+
+				std::vector<Mesh*> meshesToPass;
+				meshesToPass.push_back(newChunkMesh);
+
+				this->chunkModel = new Model(
+					glm::vec3(0.f),
+					this->materials[MAT_1],
+					this->textures[TEX_ATLAS],
+					this->textures[TEX_ATLAS_SPECULAR],
+					meshesToPass
+				);
+			}
+		}
 	}
 }
 
@@ -305,31 +476,41 @@ void Game::updateKeyboardInput()
 	// Movement
 	if (glfwGetKey(this->window, GLFW_KEY_W) == GLFW_PRESS)
 	{
-		this->camera.move(finalDt, FORWARD);
+		this->camera.move(finalDt, Direction::FORWARD);
 	}
 	if (glfwGetKey(this->window, GLFW_KEY_A) == GLFW_PRESS)
 	{
-		this->camera.move(finalDt, LEFT);
+		this->camera.move(finalDt, Direction::LEFT);
 	}
 	if (glfwGetKey(this->window, GLFW_KEY_S) == GLFW_PRESS)
 	{
-		this->camera.move(finalDt, BACKWARD);
+		this->camera.move(finalDt, Direction::BACKWARD);
 	}
 	if (glfwGetKey(this->window, GLFW_KEY_D) == GLFW_PRESS)
 	{
-		this->camera.move(finalDt, RIGHT);
+		this->camera.move(finalDt, Direction::RIGHT);
 	}
 	if (glfwGetKey(this->window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
 	{
-		this->camera.move(finalDt, DOWN);
+		this->camera.move(finalDt, Direction::DOWN);
 	}
 	if (glfwGetKey(this->window, GLFW_KEY_SPACE) == GLFW_PRESS)
 	{
-		this->camera.move(finalDt, UP);
+		this->camera.move(finalDt, Direction::UP);
 	}
 	if (glfwGetKey(this->window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)
 	{
 	}
+	// Change Hotbar Slot
+	if (glfwGetKey(this->window, GLFW_KEY_1) == GLFW_PRESS) this->activeSlot = 0;
+	if (glfwGetKey(this->window, GLFW_KEY_2) == GLFW_PRESS) this->activeSlot = 1;
+	if (glfwGetKey(this->window, GLFW_KEY_3) == GLFW_PRESS) this->activeSlot = 2;
+	if (glfwGetKey(this->window, GLFW_KEY_4) == GLFW_PRESS) this->activeSlot = 3;
+	if (glfwGetKey(this->window, GLFW_KEY_5) == GLFW_PRESS) this->activeSlot = 4;
+	if (glfwGetKey(this->window, GLFW_KEY_6) == GLFW_PRESS) this->activeSlot = 5;
+	if (glfwGetKey(this->window, GLFW_KEY_7) == GLFW_PRESS) this->activeSlot = 6;
+	if (glfwGetKey(this->window, GLFW_KEY_8) == GLFW_PRESS) this->activeSlot = 7;
+	if (glfwGetKey(this->window, GLFW_KEY_9) == GLFW_PRESS) this->activeSlot = 8;
 }
 
 void Game::updateInput()
@@ -358,6 +539,56 @@ void Game::render()
 	// Update chunks
 	if (this->chunkModel != nullptr) {
 		this->chunkModel->render(this->shaders[SHADER_CORE_PROGRAM]);
+	}
+
+	// Draw Crosshair and Hotbar (UI)
+	glDisable(GL_DEPTH_TEST);
+
+	this->uiShader->use();
+
+	// Compute Aspect Ratio
+	int fbw, fbh;
+	glfwGetFramebufferSize(this->window, &fbw, &fbh);
+	float aspectRatio = (float)fbh / (float)fbw;
+
+	// Send to shader
+	this->uiShader->set1f(aspectRatio, "aspectRatio");
+	this->uiShader->set1i(0, "useTexture");
+
+	// Background and Selector
+	this->uiShader->setVec2f(glm::vec2(0.0f, 0.0f), "uiOffset");
+	this->uiShader->set1f(0.5f, "uiAlpha");
+	this->hotbarBgMesh->render(this->uiShader);
+
+	float selectorXOffset = this->activeSlot * 0.1f;
+	this->uiShader->setVec2f(glm::vec2(selectorXOffset, 0.0f), "uiOffset");
+	this->uiShader->set1f(0.8f, "uiAlpha");
+	this->hotbarSelectorMesh->render(this->uiShader);
+
+	// Crosshair
+	this->uiShader->setVec2f(glm::vec2(0.0f, 0.0f), "uiOffset");
+	this->uiShader->set1f(1.0f, "uiAlpha");
+	this->crosshairMesh->render(this->uiShader);
+
+	// Draw Hotbar Icons
+	glClear(GL_DEPTH_BUFFER_BIT);
+	glEnable(GL_DEPTH_TEST);
+
+	this->uiShader->set1i(1, "useTexture");
+	this->uiShader->set1i(0, "uiTexture");
+
+	for (int i = 0; i < 9; ++i) {
+		uint8_t blockType = this->hotbarBlocks[i];
+		if (blockType == BlockType::AIR) continue;
+
+		float iconXOffset = -0.40f + (i * 0.1f);
+		this->uiShader->setVec2f(glm::vec2(iconXOffset, -0.90f), "uiOffset");
+
+		this->textures[TEX_ATLAS]->bind(0);
+
+		if (blockType == BlockType::GRASS) this->iconGrass->render(this->uiShader);
+		else if (blockType == BlockType::DIRT) this->iconDirt->render(this->uiShader);
+		else if (blockType == BlockType::STONE) this->iconStone->render(this->uiShader);
 	}
 
 	glfwSwapBuffers(window);

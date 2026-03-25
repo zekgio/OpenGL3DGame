@@ -24,17 +24,15 @@ private:
 
 public:
 	Model(glm::vec3 position, Material* material,
-		Texture* orTexDif, Texture* orTexSpc, std::vector<Mesh*> meshes)
+		Texture* orTexDif, Texture* orTexSpc, std::vector<Mesh*> meshesToTake)
 	{
 		this->position = position;
 		this->material = material;
 		this->overrideTextureDiffuse = orTexDif;
 		this->overrideTextureSpecular = orTexSpc;
 
-		for (auto* i : meshes)
-		{
-			this->meshes.push_back(new Mesh(*i));
-		}
+		// Directly take ownership of pointers
+		this->meshes = meshesToTake;
 
 		for (auto& i : this->meshes)
 		{

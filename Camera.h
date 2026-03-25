@@ -10,7 +10,15 @@
 #include <glm/mat4x4.hpp>
 #include <glm/gtc\matrix_transform.hpp>
 
-enum direction {FORWARD = 0, BACKWARD, LEFT, RIGHT, UP, DOWN};
+enum class Direction
+{
+	FORWARD  = 0,
+	BACKWARD = 1,
+	LEFT	 = 2,
+	RIGHT	 = 3,
+	UP		 = 4,
+	DOWN	 = 5
+};
 
 class Camera
 {
@@ -66,33 +74,38 @@ public:
 		return this->ViewMatrix;
 	}
 
+	const glm::vec3 getFront() const
+	{
+		return this->front;
+	}
+
 	const glm::vec3 getPosition() const
 	{
 		return this->position;
 	}
 
 	// Functions
-	void move(const float& dt, const int direction) // Called By Game
+	void move(const float& dt, const Direction direction) // Called By Game
 	{
 		// Update position vector
 		switch (direction)
 		{
-		case FORWARD:
+		case Direction::FORWARD:
 			this->position += this->front * movementSpeed * dt;
 			break;
-		case BACKWARD:
+		case Direction::BACKWARD:
 			this->position -= this->front * movementSpeed * dt;
 			break;
-		case RIGHT:
+		case Direction::RIGHT:
 			this->position += this->right * movementSpeed * dt;
 			break;
-		case LEFT:
+		case Direction::LEFT:
 			this->position -= this->right * movementSpeed * dt;
 			break;
-		case UP:
+		case Direction::UP:
 			this->position += this->up * movementSpeed * dt;
 			break;
-		case DOWN:
+		case Direction::DOWN:
 			this->position -= this->up * movementSpeed * dt;
 			break;
 		default:

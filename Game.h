@@ -9,12 +9,12 @@ enum shader_enum
 };
 enum texture_enum
 {
-	TEX_CAT = 0,
-	TEX_CAT_SPECULAR = 1,
-	TEX_BOX = 2,
-	TEX_BOX_SPECULAR = 3,
-	TEX_ATLAS = 4,
-	TEX_ATLAS_SPECULAR = 5
+	TEX_CAT				= 0,
+	TEX_CAT_SPECULAR	= 1,
+	TEX_BOX				= 2,
+	TEX_BOX_SPECULAR	= 3,
+	TEX_ATLAS			= 4,
+	TEX_ATLAS_SPECULAR	= 5
 };
 enum material_enum
 {
@@ -38,6 +38,7 @@ private:
 	const int GL_VERSION_MAJOR, GL_VERSION_MINOR;
 	// Delta Time
 	float dt, currTime, lastTime;
+	float clickCooldown;
 	// Mouse Input
 	double lastMouseX, lastMouseY;
 	double mouseX, mouseY;
@@ -65,6 +66,21 @@ private:
 	// Chunk and Base Models
 	Chunk* myChunk;
 	Model* chunkModel;
+	// UI
+	Shader* uiShader;
+	Mesh* crosshairMesh;
+	Mesh* hotbarBgMesh;
+	Mesh* hotbarSelectorMesh;
+	Mesh* iconGrass;
+	Mesh* iconDirt;
+	Mesh* iconStone;
+	int activeSlot;
+	uint8_t hotbarBlocks[9] = {
+		BlockType::GRASS,
+		BlockType::DIRT,
+		BlockType::STONE,
+		BlockType::AIR, BlockType::AIR, BlockType::AIR, BlockType::AIR, BlockType::AIR, BlockType::AIR
+	};
 
 // Private Functions
 	void initGLFW();
