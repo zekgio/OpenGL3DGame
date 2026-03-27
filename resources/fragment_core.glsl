@@ -82,7 +82,7 @@ void main()
     
     // 1. Ambient (Hemisphere) 
     float skyFactor = (norm.y + 1.0) * 0.5; 
-    vec3 skyColor = vec3(0.0, 0.89, 1.0);      // Warmer Sky
+    vec3 skyColor = vec3(0.2f, 0.6f, 0.8f);      // Warmer Sky
     vec3 groundColor = vec3(0.42, 0.15, 0.06); // Darker Ground
     vec3 ambient = mix(groundColor, skyColor, skyFactor) * 0.4;
     

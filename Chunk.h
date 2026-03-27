@@ -1,16 +1,14 @@
 #pragma once
 
 #include "libs.h"
+#include "Constants.h"
+#include "Mesh.h"
 #include <FastNoiseLite.h>
 
-// Block types
-enum BlockType : uint8_t {
-	AIR   = 0,
-	GRASS = 1,
-	DIRT  = 2,
-	STONE = 3
-};
-
+// TODO:
+//    -Better terrain generation (biomes, caves, ores, etc.)
+//	  -Return uses vectors (new Constructor in Mesh)
+//	  -Mesh optimization (greedy meshing, face culling, etc.)
 // Directions for faces
 enum class FaceDirection {
 	FRONT	= 0,
@@ -28,10 +26,12 @@ public:
 	static const int CHUNK_HEIGHT = 256;
 	static const int CHUNK_DEPTH = 32;
 
-	uint8_t blocks[CHUNK_WIDTH * CHUNK_HEIGHT * CHUNK_DEPTH];
+	std::vector<uint8_t> blocks;
 
 	Chunk()
 	{
+		blocks.resize(CHUNK_WIDTH * CHUNK_HEIGHT * CHUNK_DEPTH, Constants::BlockType::AIR);
+
 		// 1. Noise for terrain height (2D)
 		FastNoiseLite terrainNoise;
 		terrainNoise.SetNoiseType(FastNoiseLite::NoiseType_Perlin);
@@ -57,7 +57,7 @@ public:
 					int index = getIndex(x, y, z);
 
 					if (y > surfaceHeight) {
-						blocks[index] = BlockType::AIR;
+						blocks[index] = Constants::BlockType::AIR;
 						continue;
 					}
 
@@ -65,21 +65,21 @@ public:
 
 					// If value is high enough, remove block
 					if (carve > 0.4f) {
-						blocks[index] = BlockType::AIR;
+						blocks[index] = Constants::BlockType::AIR;
 						continue;
 					}
 
 					if (y > 65) {
-						blocks[index] = BlockType::STONE;
+						blocks[index] = Constants::BlockType::STONE;
 					}
 					else if (y == surfaceHeight) {
-						blocks[index] = BlockType::GRASS;
+						blocks[index] = Constants::BlockType::GRASS;
 					}
 					else if (y >= surfaceHeight - dirtDepth) {
-						blocks[index] = BlockType::DIRT;
+						blocks[index] = Constants::BlockType::DIRT;
 					}
 					else {
-						blocks[index] = BlockType::STONE;
+						blocks[index] = Constants::BlockType::STONE;
 					}
 				}
 			}
@@ -93,7 +93,7 @@ public:
 	inline uint8_t getBlock(int x, int y, int z) const {
 		// If out of bounds, consider it as AIR (important for mesh generation at borders with single chunk)
 		if (x < 0 || x >= CHUNK_WIDTH || y < 0 || y >= CHUNK_HEIGHT || z < 0 || z >= CHUNK_DEPTH) {
-			return BlockType::AIR;
+			return Constants::BlockType::AIR;
 		}
 		return blocks[getIndex(x, y, z)];
 	}
@@ -108,10 +108,10 @@ public:
 
 	// Function to choose the correct atlas texture index based on block type and face direction
 	int getTextureIndex(uint8_t type, FaceDirection face) {
-		if (type == BlockType::DIRT) return 2;
-		if (type == BlockType::STONE) return 3;
+		if (type == Constants::BlockType::DIRT) return 2;
+		if (type == Constants::BlockType::STONE) return 3;
 
-		if (type == BlockType::GRASS) {
+		if (type == Constants::BlockType::GRASS) {
 			if (face == FaceDirection::TOP) return 0;
 			if (face == FaceDirection::BOTTOM) return 2;
 			return 1;
@@ -136,7 +136,7 @@ public:
 				for (int z = 0; z < CHUNK_DEPTH; ++z) {
 
 					uint8_t type = getBlock(x, y, z);
-					if (type == BlockType::AIR) continue;
+					if (type == Constants::BlockType::AIR) continue;
 
 					glm::vec3 pos(x, y, z); // Current position
 
@@ -162,27 +162,27 @@ public:
 
 					// Neighbors check and face generation
 					// Frontal (Z + 1)
-					if (getBlock(x, y, z + 1) == BlockType::AIR)
+					if (getBlock(x, y, z + 1) == Constants::BlockType::AIR)
 						addFace(FaceDirection::FRONT, glm::vec3(0, 0, 1), glm::vec3(-0.5f, -0.5f, 0.5f), glm::vec3(0.5f, -0.5f, 0.5f), glm::vec3(0.5f, 0.5f, 0.5f), glm::vec3(-0.5f, 0.5f, 0.5f));
 
 					// Posterior (Z - 1)
-					if (getBlock(x, y, z - 1) == BlockType::AIR)
+					if (getBlock(x, y, z - 1) == Constants::BlockType::AIR)
 						addFace(FaceDirection::BACK, glm::vec3(0, 0, -1), glm::vec3(0.5f, -0.5f, -0.5f), glm::vec3(-0.5f, -0.5f, -0.5f), glm::vec3(-0.5f, 0.5f, -0.5f), glm::vec3(0.5f, 0.5f, -0.5f));
 
 					// Left (X - 1)
-					if (getBlock(x - 1, y, z) == BlockType::AIR)
+					if (getBlock(x - 1, y, z) == Constants::BlockType::AIR)
 						addFace(FaceDirection::LEFT, glm::vec3(-1, 0, 0), glm::vec3(-0.5f, -0.5f, -0.5f), glm::vec3(-0.5f, -0.5f, 0.5f), glm::vec3(-0.5f, 0.5f, 0.5f), glm::vec3(-0.5f, 0.5f, -0.5f));
 
 					// Right (X + 1)
-					if (getBlock(x + 1, y, z) == BlockType::AIR)
+					if (getBlock(x + 1, y, z) == Constants::BlockType::AIR)
 						addFace(FaceDirection::RIGHT, glm::vec3(1, 0, 0), glm::vec3(0.5f, -0.5f, 0.5f), glm::vec3(0.5f, -0.5f, -0.5f), glm::vec3(0.5f, 0.5f, -0.5f), glm::vec3(0.5f, 0.5f, 0.5f));
 
 					// Top (Y + 1)
-					if (getBlock(x, y + 1, z) == BlockType::AIR)
+					if (getBlock(x, y + 1, z) == Constants::BlockType::AIR)
 						addFace(FaceDirection::TOP, glm::vec3(0, 1, 0), glm::vec3(-0.5f, 0.5f, 0.5f), glm::vec3(0.5f, 0.5f, 0.5f), glm::vec3(0.5f, 0.5f, -0.5f), glm::vec3(-0.5f, 0.5f, -0.5f));
 
 					// Bottom (Y - 1)
-					if (getBlock(x, y - 1, z) == BlockType::AIR)
+					if (getBlock(x, y - 1, z) == Constants::BlockType::AIR)
 						addFace(FaceDirection::BOTTOM, glm::vec3(0, -1, 0), glm::vec3(-0.5f, -0.5f, -0.5f), glm::vec3(0.5f, -0.5f, -0.5f), glm::vec3(0.5f, -0.5f, 0.5f), glm::vec3(-0.5f, -0.5f, 0.5f));
 				}
 			}

@@ -1,5 +1,8 @@
 #pragma once
 
+#include <vector>
+#include <memory>
+
 #include "Mesh.h"
 #include "Texture.h"
 #include "Shader.h"
@@ -13,14 +16,10 @@ private:
 	Material* material;
 	Texture* overrideTextureDiffuse;
 	Texture* overrideTextureSpecular;
-	std::vector<Mesh*> meshes;
+	std::vector<std::unique_ptr<Mesh>> meshes;
 	glm::vec3 position;
 
-
-	void updateUniforms()
-	{
-
-	}
+	void updateUniforms() {}
 
 public:
 	Model(glm::vec3 position, Material* material,
@@ -32,7 +31,9 @@ public:
 		this->overrideTextureSpecular = orTexSpc;
 
 		// Directly take ownership of pointers
-		this->meshes = meshesToTake;
+		this->meshes.reserve(meshesToTake.size());
+		for (Mesh* rawMesh : meshesToTake)
+			this->meshes.push_back(std::unique_ptr<Mesh>(rawMesh));
 
 		for (auto& i : this->meshes)
 		{
@@ -41,13 +42,7 @@ public:
 		}
 	}
 
-	~Model()
-	{
-		for (auto*& i : this->meshes)
-		{
-			delete i;
-		}
-	}
+	~Model() {}
 
 	// Functions
 	void rotate(const glm::vec3 rotation)
@@ -58,10 +53,7 @@ public:
 		}
 	}
 
-	void update()
-	{
-
-	}
+	void update() {}
 
 	void render(Shader* shader)
 	{
@@ -86,7 +78,11 @@ public:
 	// Accessors
 	std::vector<Mesh*> getMeshes() const
 	{
-		return this->meshes;
+		std::vector<Mesh*> observerMeshes;
+		observerMeshes.reserve(this->meshes.size());
+		for (const auto& m : this->meshes)
+			observerMeshes.push_back(m.get());
+		return observerMeshes;
 	}
 
 	void setPosition(const glm::vec3 position)

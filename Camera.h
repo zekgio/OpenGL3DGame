@@ -10,6 +10,8 @@
 #include <glm/mat4x4.hpp>
 #include <glm/gtc\matrix_transform.hpp>
 
+#include "Constants.h"
+
 enum class Direction
 {
 	FORWARD  = 0,
@@ -48,8 +50,8 @@ public:
 	{
 		this->ViewMatrix = glm::mat4(1.f);
 
-		this->movementSpeed = 3.f;
-		this->sensitivity = 8.f;
+		this->movementSpeed = Constants::Input::MOVEMENT_SPEED;
+		this->sensitivity = Constants::Input::MOUSE_SENSITIVITY;
 
 		this->position = position;
 		this->up = worldUp;

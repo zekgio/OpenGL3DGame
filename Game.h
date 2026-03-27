@@ -1,28 +1,21 @@
 #pragma once
 
 #include "libs.h"
+#include "Chunk.h"
+#include "Camera.h"
+#include "Primitives.h"
+#include "Light.h"
+#include "Vertex.h"
+#include "Model.h"
+#include "Material.h"
+#include "Texture.h"
+#include "Shader.h"
 
-// ENUMS
-enum shader_enum
-{
-	SHADER_CORE_PROGRAM = 0
-};
-enum texture_enum
-{
-	TEX_CAT				= 0,
-	TEX_CAT_SPECULAR	= 1,
-	TEX_BOX				= 2,
-	TEX_BOX_SPECULAR	= 3,
-	TEX_ATLAS			= 4,
-	TEX_ATLAS_SPECULAR	= 5
-};
-enum material_enum
-{
-	MAT_1 = 0
-};
-enum mesh_enum
-{
-	MESH_QUAD = 0
+// Structs
+struct WindowDeleter {
+	void operator()(GLFWwindow* window) const {
+		glfwDestroyWindow(window);
+	}
 };
 
 // Game Header Class
@@ -31,7 +24,7 @@ class Game
 private:
 // Variables
 	// Window
-	GLFWwindow* window;
+	std::unique_ptr<GLFWwindow, WindowDeleter> window;
 	const int WIN_W, WIN_H;
 	int frameBufferW, frameBufferH;
 	// OpenGL Context
@@ -45,44 +38,34 @@ private:
 	double mouseOffsetX, mouseOffsetY;
 	bool firstMouse;
 	// Camera
-	Camera camera;
+	std::unique_ptr<Camera> camera;
 	// Matrices
 	glm::mat4 ViewMatrix;
 	glm::vec3 worldUp;
 	glm::vec3 camFront;
 	glm::mat4 ProjectionMatrix;
 	float fov, nearPlane, farPlane;
-	// Shaders
-	std::vector<Shader*> shaders;
-	// Textures
-	std::vector<Texture*> textures;
-	// Materials
-	std::vector<Material*> materials;
-	// Models
-	std::vector<Model*> models;
-	// Lights
-	std::vector<PointLight*> pointLights;
-	DirectionalLight* dirLight;
+	// Resources
+	std::vector<std::unique_ptr<Shader>> shaders;
+	std::vector<std::unique_ptr<Texture>> textures;
+	std::vector<std::unique_ptr<Mesh>> gameMeshes;
+	std::vector<std::unique_ptr<Material>> materials;
+	std::vector<std::unique_ptr<PointLight>> pointLights;
+	std::vector<std::unique_ptr<DirectionalLight>> dirLights;
 	// Chunk and Base Models
-	Chunk* myChunk;
-	Model* chunkModel;
-	// UI
-	Shader* uiShader;
-	Mesh* crosshairMesh;
-	Mesh* hotbarBgMesh;
-	Mesh* hotbarSelectorMesh;
-	Mesh* iconGrass;
-	Mesh* iconDirt;
-	Mesh* iconStone;
+	std::unique_ptr<Chunk> myChunk;
+	std::unique_ptr<Model> chunkModel;
+	
 	int activeSlot;
 	uint8_t hotbarBlocks[9] = {
-		BlockType::GRASS,
-		BlockType::DIRT,
-		BlockType::STONE,
-		BlockType::AIR, BlockType::AIR, BlockType::AIR, BlockType::AIR, BlockType::AIR, BlockType::AIR
+		Constants::BlockType::GRASS,
+		Constants::BlockType::DIRT,
+		Constants::BlockType::STONE,
+		Constants::BlockType::AIR, Constants::BlockType::AIR, Constants::BlockType::AIR, Constants::BlockType::AIR, Constants::BlockType::AIR, Constants::BlockType::AIR
 	};
 
 // Private Functions
+	void initCamera();
 	void initGLFW();
 	void initWindow(const char* title, bool resizable);
 	void initGLEW(); // After Context Creation
@@ -95,11 +78,10 @@ private:
 	void initLights();
 	void initUniforms();
 	void initPointLights();
+	void initDirectionalLights();
 	void initOBJModels();
 
 	void updateUniforms();
-
-// Static Variables
 
 public:
 // Constructors/Destructors
@@ -122,7 +104,5 @@ public:
 	void updateInput();
 	void update();
 	void render();
-
-// Static Functions
 
 };

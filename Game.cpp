@@ -2,6 +2,15 @@
 #include "OBJLoader.h"
 
 // Private Functions
+void Game::initCamera()
+{
+	this->camera = std::make_unique<Camera>(
+		glm::vec3(5.f, 90.f, 5.f),
+		glm::vec3(0.f, 0.f, 1.f),
+		glm::vec3(0.f, 1.f, 0.f)
+	);
+}
+
 void Game::initGLFW()
 {
 	if (glfwInit() == GLFW_FALSE)
@@ -18,8 +27,8 @@ void Game::initWindow(const char* title, bool resizable)
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, this->GL_VERSION_MINOR);
 	glfwWindowHint(GLFW_RESIZABLE, resizable);
 	//glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // For MAC OS
-
-	this->window = glfwCreateWindow(this->WIN_W, this->WIN_H, title, NULL, NULL);
+	GLFWwindow* rawWindow = glfwCreateWindow(this->WIN_W, this->WIN_H, title, NULL, NULL);
+	this->window.reset(rawWindow);
 
 	if (this->window == nullptr)
 	{
@@ -27,9 +36,9 @@ void Game::initWindow(const char* title, bool resizable)
 		glfwTerminate();
 	}
 
-	glfwGetFramebufferSize(this->window, &this->frameBufferW, &this->frameBufferH);
+	glfwGetFramebufferSize(this->window.get(), &this->frameBufferW, &this->frameBufferH);
 	glViewport(0, 0, this->frameBufferW, this->frameBufferH);
-	glfwMakeContextCurrent(this->window); // Important for glew
+	glfwMakeContextCurrent(this->window.get()); // Important for glew
 }
 
 void Game::initGLEW()
@@ -55,7 +64,7 @@ void Game::initOpenGLOptions()
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
 	// Input
-	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+	glfwSetInputMode(window.get(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 }
 
 void Game::initMatrices()
@@ -70,34 +79,39 @@ void Game::initMatrices()
 
 void Game::initShaders()
 {
-	this->shaders.push_back( new Shader( this->GL_VERSION_MAJOR,
-		this->GL_VERSION_MINOR, "resources/vertex_core.glsl",
-		"resources/fragment_core.glsl") );
-	this->uiShader = new Shader(this->GL_VERSION_MAJOR, this->GL_VERSION_MINOR,
-		"resources/vertex_ui.glsl", "resources/fragment_ui.glsl");
+	this->shaders.push_back(
+		std::make_unique<Shader>(this->GL_VERSION_MAJOR, this->GL_VERSION_MINOR,
+			"resources/vertex_core.glsl", "resources/fragment_core.glsl")
+	);
+	this->shaders.push_back(
+		std::make_unique<Shader>(this->GL_VERSION_MAJOR, this->GL_VERSION_MINOR,
+			"resources/vertex_ui.glsl", "resources/fragment_ui.glsl")
+	);
 }
 
 void Game::initTextures()
 {
-	this->textures.push_back(new Texture("images/cat.jpg", GL_TEXTURE_2D) );
-	this->textures.push_back(new Texture("images/cat_specular.jpg", GL_TEXTURE_2D));
-	this->textures.push_back(new Texture("images/box.png", GL_TEXTURE_2D));
-	this->textures.push_back(new Texture("images/box_specular.png", GL_TEXTURE_2D));
-	this->textures.push_back(new Texture("images/atlas.jpg", GL_TEXTURE_2D));
-	this->textures.push_back(new Texture("images/atlas_specular.jpg", GL_TEXTURE_2D));
+	;
+	this->textures.push_back( std::make_unique<Texture>(Constants::Resources::CAT, GL_TEXTURE_2D) );
+	this->textures.push_back( std::make_unique<Texture>(Constants::Resources::CAT_SPECULAR, GL_TEXTURE_2D) );
+	this->textures.push_back( std::make_unique<Texture>(Constants::Resources::BOX, GL_TEXTURE_2D) );
+	this->textures.push_back( std::make_unique<Texture>(Constants::Resources::BOX_SPECULAR, GL_TEXTURE_2D) );
+	this->textures.push_back( std::make_unique<Texture>(Constants::Resources::ATLAS, GL_TEXTURE_2D) );
+	this->textures.push_back( std::make_unique<Texture>(Constants::Resources::ATLAS_SPECULAR, GL_TEXTURE_2D) );
 }
 
 void Game::initMaterials()
 {
-	// Ordine: Ambient, Diffuse, Specular, diffuse_tex, specular_tex
-	// Impostiamo lo specular a vec3(0.0f) per rendere i blocchi di terra opachi!
-	this->materials.push_back(new Material(glm::vec3(0.1f), glm::vec3(1.0f), glm::vec3(1.f), 0, 1));
+	// Order: Ambient, Diffuse, Specular, diffuse_tex, specular_tex
+	this->materials.push_back(
+		std::make_unique<Material>(glm::vec3(0.1f), glm::vec3(1.0f), glm::vec3(1.f), 0, 1)
+	);
 }
 
 void Game::initModels()
 {
 	// Inizializza i dati del chunk
-	this->myChunk = new Chunk();
+	this->myChunk = std::make_unique<Chunk>(); 
 
 	// Lascia che il chunk costruisca l'unica mega-mesh ottimizzata!
 	Mesh* chunkMesh = this->myChunk->buildMesh();
@@ -106,16 +120,19 @@ void Game::initModels()
 	meshesToPass.push_back(chunkMesh);
 
 	// Crea il Modello usando la texture Atlas
-	this->chunkModel = new Model(
+	this->chunkModel = std::make_unique<Model>(
 		glm::vec3(0.f),
-		this->materials[MAT_1],
-		this->textures[TEX_ATLAS],
-		this->textures[TEX_ATLAS_SPECULAR],
+		this->materials[Constants::GameEnums::MaterialEnum::MAT_1].get(),
+		this->textures[Constants::GameEnums::TextureEnum::TEX_ATLAS].get(),
+		this->textures[Constants::GameEnums::TextureEnum::TEX_ATLAS_SPECULAR].get(),
 		meshesToPass
 	);
 
 	// Pulizia del vettore temporaneo
 	meshesToPass.clear();
+
+	// MESHES INITIALIZATION
+	this->gameMeshes.resize(Constants::GameEnums::MeshEnum::COUNT_MESHES);
 
 	// MARKER INITIALIZATION
 	float size = 0.03f;       // Arm length
@@ -142,8 +159,7 @@ void Game::initModels()
 		0, 1, 2, 2, 3, 0, // Horizontal Rectangle
 		4, 5, 6, 6, 7, 4  // Verticale Rectangle
 	};
-
-	this->crosshairMesh = new Mesh(v, 8, indices, 12);
+	this->gameMeshes[Constants::GameEnums::MeshEnum::CROSSHAIR_MESH] = std::make_unique<Mesh>(v, 8, indices, 12);
 
 	// HOTBAR
 	glm::vec3 darkGray(0.2f, 0.2f, 0.2f);
@@ -156,7 +172,7 @@ void Game::initModels()
 		{glm::vec3(-0.45f, -0.85f, 0.f), darkGray, t, n}
 	};
 	GLuint quadIndices[] = { 0, 1, 2, 2, 3, 0 };
-	this->hotbarBgMesh = new Mesh(bgVerts, 4, quadIndices, 6);
+	this->gameMeshes[Constants::GameEnums::MeshEnum::HOTBAR_BG_MESH] = std::make_unique<Mesh>(bgVerts, 4, quadIndices, 6);
 
 	// 2. Selector
 	Vertex selVerts[] = {
@@ -165,32 +181,32 @@ void Game::initModels()
 		{glm::vec3(-0.34f, -0.84f, 0.f), white, t, n},
 		{glm::vec3(-0.46f, -0.84f, 0.f), white, t, n}
 	};
-	this->hotbarSelectorMesh = new Mesh(selVerts, 4, quadIndices, 6);
+	this->gameMeshes[Constants::GameEnums::MeshEnum::HOTBAR_SELECTOR_MESH] = std::make_unique<Mesh>(selVerts, 4, quadIndices, 6);
 
 	// ISOMETRIC BLOCK ICONS
 	Chunk* tempChunk = new Chunk();
 	// Empty chunk
 	for (int i = 0; i < Chunk::CHUNK_WIDTH * Chunk::CHUNK_HEIGHT * Chunk::CHUNK_DEPTH; ++i) {
-		tempChunk->blocks[i] = BlockType::AIR;
+		tempChunk->blocks[i] = Constants::BlockType::AIR;
 	}
 
 	// 1. Grass
-	tempChunk->setBlock(0, 0, 0, BlockType::GRASS);
-	this->iconGrass = tempChunk->buildMesh();
-	this->iconGrass->setRotation(glm::vec3(25.f, 45.f, 0.f)); // Rotation
-	this->iconGrass->setScale(glm::vec3(0.06f)); // Scale
+	tempChunk->setBlock(0, 0, 0, Constants::BlockType::GRASS);
+	this->gameMeshes[Constants::GameEnums::MeshEnum::ICON_GRASS_MESH].reset( tempChunk->buildMesh() );
+	this->gameMeshes[Constants::GameEnums::MeshEnum::ICON_GRASS_MESH].get()->setRotation(glm::vec3(25.f, 45.f, 0.f)); // Rotation
+	this->gameMeshes[Constants::GameEnums::MeshEnum::ICON_GRASS_MESH].get()->setScale(glm::vec3(0.06f)); // Scale
 
 	// 2. Dirt
-	tempChunk->setBlock(0, 0, 0, BlockType::DIRT);
-	this->iconDirt = tempChunk->buildMesh();
-	this->iconDirt->setRotation(glm::vec3(25.f, 45.f, 0.f));
-	this->iconDirt->setScale(glm::vec3(0.06f));
+	tempChunk->setBlock(0, 0, 0, Constants::BlockType::DIRT);
+	this->gameMeshes[Constants::GameEnums::MeshEnum::ICON_DIRT_MESH].reset(tempChunk->buildMesh());
+	this->gameMeshes[Constants::GameEnums::MeshEnum::ICON_DIRT_MESH].get()->setRotation(glm::vec3(25.f, 45.f, 0.f));
+	this->gameMeshes[Constants::GameEnums::MeshEnum::ICON_DIRT_MESH].get()->setScale(glm::vec3(0.06f));
 
 	// 3. Stone
-	tempChunk->setBlock(0, 0, 0, BlockType::STONE);
-	this->iconStone = tempChunk->buildMesh();
-	this->iconStone->setRotation(glm::vec3(25.f, 45.f, 0.f));
-	this->iconStone->setScale(glm::vec3(0.06f));
+	tempChunk->setBlock(0, 0, 0, Constants::BlockType::STONE);
+	this->gameMeshes[Constants::GameEnums::MeshEnum::ICON_STONE_MESH].reset(tempChunk->buildMesh());
+	this->gameMeshes[Constants::GameEnums::MeshEnum::ICON_STONE_MESH].get()->setRotation(glm::vec3(25.f, 45.f, 0.f));
+	this->gameMeshes[Constants::GameEnums::MeshEnum::ICON_STONE_MESH].get()->setScale(glm::vec3(0.06f));
 
 	delete tempChunk;
 }
@@ -198,15 +214,12 @@ void Game::initModels()
 void Game::initLights()
 {
 	this->initPointLights();
-
-	// Direzione: Punta verso il basso (-Y), un po' a sinistra (-X) e in avanti (-Z)
-	// Colore: Un bianco caldo leggermente giallino (1.0, 0.95, 0.8)
-	this->dirLight = new DirectionalLight(glm::vec3(-0.2f, -1.0f, -0.3f), 0.7f, glm::vec3(1.0f, 0.95f, 0.8f));
+	this->initDirectionalLights();
 }
 void Game::initPointLights()
 {
 	this->pointLights.push_back(
-		new PointLight(
+		std::make_unique<PointLight>(
 			glm::vec3(0.f),
 			1.f,
 			glm::vec3(1.f,1.f,1.f),
@@ -216,33 +229,41 @@ void Game::initPointLights()
 		)
 	);
 }
+void Game::initDirectionalLights()
+{
+	this->dirLights.push_back(
+		std::make_unique<DirectionalLight>(
+			DirectionalLight(glm::vec3(-0.2f, -1.0f, -0.3f), 0.7f, glm::vec3(1.0f, 0.95f, 0.8f))
+		)
+	);
+}
 
 void Game::updateUniforms()
 {
 	// Update View Matrix
-	this->ViewMatrix = this->camera.getViewMatrix();
-	this->shaders[SHADER_CORE_PROGRAM]->setMat4fv(this->ViewMatrix, "ViewMatrix");
-	this->shaders[SHADER_CORE_PROGRAM]->setVec3f(this->camera.getPosition(), "cameraPos");
+	this->ViewMatrix = this->camera->getViewMatrix();
+	this->shaders[Constants::GameEnums::ShaderEnum::SHADER_CORE_PROGRAM]->setMat4fv(this->ViewMatrix, "ViewMatrix");
+	this->shaders[Constants::GameEnums::ShaderEnum::SHADER_CORE_PROGRAM]->setVec3f(this->camera->getPosition(), "cameraPos");
 	
-	for (PointLight * pl : this->pointLights)
+	for (auto& pl : this->pointLights)
 	{
-		pl->sendToShader(*this->shaders[SHADER_CORE_PROGRAM]);
+		pl->sendToShader(*this->shaders[Constants::GameEnums::ShaderEnum::SHADER_CORE_PROGRAM]);
 	}
-	this->dirLight->sendToShader(*this->shaders[SHADER_CORE_PROGRAM]);
+	this->dirLights[0]->sendToShader(*this->shaders[Constants::GameEnums::ShaderEnum::SHADER_CORE_PROGRAM]);
 	// Update Projection Matrix
-	this->shaders[SHADER_CORE_PROGRAM]->setMat4fv(this->ProjectionMatrix, "ProjectionMatrix");
+	this->shaders[Constants::GameEnums::ShaderEnum::SHADER_CORE_PROGRAM]->setMat4fv(this->ProjectionMatrix, "ProjectionMatrix");
 }
 
 void Game::initUniforms()
 {
-	this->shaders[SHADER_CORE_PROGRAM]->setMat4fv(ViewMatrix, "ViewMatrix");
-	this->shaders[SHADER_CORE_PROGRAM]->setMat4fv(ProjectionMatrix, "ProjectionMatrix");
+	this->shaders[Constants::GameEnums::ShaderEnum::SHADER_CORE_PROGRAM]->setMat4fv(ViewMatrix, "ViewMatrix");
+	this->shaders[Constants::GameEnums::ShaderEnum::SHADER_CORE_PROGRAM]->setMat4fv(ProjectionMatrix, "ProjectionMatrix");
 	
-	for (PointLight* pl : this->pointLights)
+	for (auto& pl : this->pointLights)
 	{
-		pl->sendToShader(*this->shaders[SHADER_CORE_PROGRAM]);
+		pl->sendToShader(*this->shaders[Constants::GameEnums::ShaderEnum::SHADER_CORE_PROGRAM]);
 	}
-	this->dirLight->sendToShader(*this->shaders[SHADER_CORE_PROGRAM]);
+	this->dirLights[0]->sendToShader(*this->shaders[Constants::GameEnums::ShaderEnum::SHADER_CORE_PROGRAM]);
 }
 
 void Game::initOBJModels()
@@ -254,9 +275,10 @@ Game::Game(const char* title,
 	const int width, const int height,
 	const int GLverMaj, const int GLverMin,
 	bool resizable) :
-	WIN_W(width), WIN_H(height), GL_VERSION_MAJOR(GLverMaj), GL_VERSION_MINOR(GLverMin),
-	camera(glm::vec3(5.f,90.f,5.f), glm::vec3(0.f, 0.f, 1.f), glm::vec3(0.f, 1.f, 0.f))
+	WIN_W(width), WIN_H(height), GL_VERSION_MAJOR(GLverMaj), GL_VERSION_MINOR(GLverMin)
 {
+
+
 	// Init Variables
 	this->window	   = nullptr;
 	this->frameBufferW = this->WIN_W;
@@ -285,6 +307,7 @@ Game::Game(const char* title,
 	this->activeSlot = 0;
 
 	// Init System
+	this->initCamera();
 	this->initGLFW();
 	this->initWindow(title, resizable);
 	this->initGLEW();
@@ -302,43 +325,27 @@ Game::Game(const char* title,
 
 Game::~Game()
 {
-	glfwDestroyWindow(this->window);
+	this->shaders.clear();
+	this->textures.clear();
+	this->materials.clear();
+	this->gameMeshes.clear();
+	this->pointLights.clear();
+	this->dirLights.clear();
+	this->window.reset();
+
 	glfwTerminate();
-
-	for (size_t i = 0; i < this->shaders.size(); ++i)
-		delete this->shaders[i];
-	for (size_t i = 0; i < this->textures.size(); ++i)
-		delete this->textures[i];
-	for (size_t i = 0; i < this->materials.size(); ++i)
-		delete this->materials[i];
-	//for (size_t i = 0; i < this->meshes.size(); ++i)
-	//	delete this->meshes[i];
-	for (auto& i : this->models)
-		delete i;
-	for (size_t i = 0; i < this->pointLights.size(); ++i)
-		delete this->pointLights[i];
-
-	delete this->myChunk;
-	delete this->chunkModel;
-	delete this->dirLight;
-	delete this->hotbarBgMesh;
-	delete this->hotbarSelectorMesh;
-	delete this->crosshairMesh;
-	delete this->iconGrass;
-	delete this->iconDirt;
-	delete this->iconStone;
 }
 
 // Accessors
 int Game::getWindowShouldClose()
 {
-	return glfwWindowShouldClose(this->window);
+	return glfwWindowShouldClose(this->window.get());
 }
 
 // Modifiers
 void Game::setWindowShouldClose()
 {
-	glfwSetWindowShouldClose(this->window, GLFW_TRUE);
+	glfwSetWindowShouldClose(this->window.get(), GLFW_TRUE);
 }
 
 // Functions
@@ -351,7 +358,7 @@ void Game::updateDt()
 
 void Game::updateMouseInput()
 {
-	glfwGetCursorPos(this->window, &this->mouseX, &this->mouseY);
+	glfwGetCursorPos(this->window.get(), &this->mouseX, &this->mouseY);
 
 	if (this->firstMouse)
 	{
@@ -368,14 +375,6 @@ void Game::updateMouseInput()
 	this->lastMouseX = this->mouseX;
 	this->lastMouseY = this->mouseY;
 
-	/*
-	// Move Light
-	if (glfwGetMouseButton(this->window, GLFW_MOUSE_BUTTON_1) == GLFW_PRESS)
-	{
-		this->pointLights[0]->setPosition( this->camera.getPosition() );
-	}
-	*/
-
 	// Click Cooldown
 	if (this->clickCooldown > 0.0f) {
 		this->clickCooldown -= this->dt;
@@ -384,15 +383,15 @@ void Game::updateMouseInput()
 	// RAYCASTING
 	if (this->clickCooldown <= 0.0f)
 	{
-		bool leftClick = glfwGetMouseButton(this->window, GLFW_MOUSE_BUTTON_1) == GLFW_PRESS;
-		bool rightClick = glfwGetMouseButton(this->window, GLFW_MOUSE_BUTTON_2) == GLFW_PRESS;
+		bool leftClick = glfwGetMouseButton(this->window.get(), GLFW_MOUSE_BUTTON_1) == GLFW_PRESS;
+		bool rightClick = glfwGetMouseButton(this->window.get(), GLFW_MOUSE_BUTTON_2) == GLFW_PRESS;
 
 		if (leftClick || rightClick)
 		{
 			this->clickCooldown = 0.2f; // 200 ms cooldown
 
-			glm::vec3 rayPos = this->camera.getPosition();
-			glm::vec3 rayDir = this->camera.getFront();
+			glm::vec3 rayPos = this->camera->getPosition();
+			glm::vec3 rayDir = this->camera->getFront();
 			float stepSize = 0.05f; // Ray precision
 			float reach = 6.0f;     // Range (in blocks)
 
@@ -411,7 +410,7 @@ void Game::updateMouseInput()
 				int cy = (int)std::round(rayPos.y);
 				int cz = (int)std::round(rayPos.z);
 
-				if (this->myChunk->getBlock(cx, cy, cz) != BlockType::AIR)
+				if (this->myChunk->getBlock(cx, cy, cz) != Constants::BlockType::AIR)
 				{
 					hit = true;
 					hitX = cx; hitY = cy; hitZ = cz;
@@ -428,29 +427,27 @@ void Game::updateMouseInput()
 			{
 				if (leftClick) {
 					// Break
-					this->myChunk->setBlock(hitX, hitY, hitZ, BlockType::AIR);
+					this->myChunk->setBlock(hitX, hitY, hitZ, Constants::BlockType::AIR);
 				}
 				else if (rightClick) {
 					// Place
 					uint8_t blockToPlace = this->hotbarBlocks[this->activeSlot];
-					if (blockToPlace != BlockType::AIR) {
+					if (blockToPlace != Constants::BlockType::AIR) {
 						this->myChunk->setBlock(lastX, lastY, lastZ, blockToPlace);
 					}
 				}
 
 				// MESH RECONSTRUCTION
-				delete this->chunkModel;
-
 				Mesh* newChunkMesh = this->myChunk->buildMesh();
 
 				std::vector<Mesh*> meshesToPass;
 				meshesToPass.push_back(newChunkMesh);
 
-				this->chunkModel = new Model(
+				this->chunkModel = std::make_unique<Model>(
 					glm::vec3(0.f),
-					this->materials[MAT_1],
-					this->textures[TEX_ATLAS],
-					this->textures[TEX_ATLAS_SPECULAR],
+					this->materials[Constants::GameEnums::MaterialEnum::MAT_1].get(),
+					this->textures[Constants::GameEnums::TextureEnum::TEX_ATLAS].get(),
+					this->textures[Constants::GameEnums::TextureEnum::TEX_ATLAS_SPECULAR].get(),
 					meshesToPass
 				);
 			}
@@ -461,56 +458,56 @@ void Game::updateMouseInput()
 void Game::updateKeyboardInput()
 {
 	// Program
-	if (glfwGetKey(this->window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+	if (glfwGetKey(this->window.get(), GLFW_KEY_ESCAPE) == GLFW_PRESS)
 	{
-		glfwSetWindowShouldClose(this->window, GLFW_TRUE);
+		glfwSetWindowShouldClose(this->window.get(), GLFW_TRUE);
 	}
 
 	float speedMultiplier = 1.0f;
-	if (glfwGetKey(this->window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)
+	if (glfwGetKey(this->window.get(), GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)
 	{
 		speedMultiplier = 5.0f;
 	}
 	float finalDt = this->dt * speedMultiplier;
 
 	// Movement
-	if (glfwGetKey(this->window, GLFW_KEY_W) == GLFW_PRESS)
+	if (glfwGetKey(this->window.get(), GLFW_KEY_W) == GLFW_PRESS)
 	{
-		this->camera.move(finalDt, Direction::FORWARD);
+		this->camera->move(finalDt, Direction::FORWARD);
 	}
-	if (glfwGetKey(this->window, GLFW_KEY_A) == GLFW_PRESS)
+	if (glfwGetKey(this->window.get(), GLFW_KEY_A) == GLFW_PRESS)
 	{
-		this->camera.move(finalDt, Direction::LEFT);
+		this->camera->move(finalDt, Direction::LEFT);
 	}
-	if (glfwGetKey(this->window, GLFW_KEY_S) == GLFW_PRESS)
+	if (glfwGetKey(this->window.get(), GLFW_KEY_S) == GLFW_PRESS)
 	{
-		this->camera.move(finalDt, Direction::BACKWARD);
+		this->camera->move(finalDt, Direction::BACKWARD);
 	}
-	if (glfwGetKey(this->window, GLFW_KEY_D) == GLFW_PRESS)
+	if (glfwGetKey(this->window.get(), GLFW_KEY_D) == GLFW_PRESS)
 	{
-		this->camera.move(finalDt, Direction::RIGHT);
+		this->camera->move(finalDt, Direction::RIGHT);
 	}
-	if (glfwGetKey(this->window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
+	if (glfwGetKey(this->window.get(), GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
 	{
-		this->camera.move(finalDt, Direction::DOWN);
+		this->camera->move(finalDt, Direction::DOWN);
 	}
-	if (glfwGetKey(this->window, GLFW_KEY_SPACE) == GLFW_PRESS)
+	if (glfwGetKey(this->window.get(), GLFW_KEY_SPACE) == GLFW_PRESS)
 	{
-		this->camera.move(finalDt, Direction::UP);
+		this->camera->move(finalDt, Direction::UP);
 	}
-	if (glfwGetKey(this->window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)
+	if (glfwGetKey(this->window.get(), GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)
 	{
 	}
 	// Change Hotbar Slot
-	if (glfwGetKey(this->window, GLFW_KEY_1) == GLFW_PRESS) this->activeSlot = 0;
-	if (glfwGetKey(this->window, GLFW_KEY_2) == GLFW_PRESS) this->activeSlot = 1;
-	if (glfwGetKey(this->window, GLFW_KEY_3) == GLFW_PRESS) this->activeSlot = 2;
-	if (glfwGetKey(this->window, GLFW_KEY_4) == GLFW_PRESS) this->activeSlot = 3;
-	if (glfwGetKey(this->window, GLFW_KEY_5) == GLFW_PRESS) this->activeSlot = 4;
-	if (glfwGetKey(this->window, GLFW_KEY_6) == GLFW_PRESS) this->activeSlot = 5;
-	if (glfwGetKey(this->window, GLFW_KEY_7) == GLFW_PRESS) this->activeSlot = 6;
-	if (glfwGetKey(this->window, GLFW_KEY_8) == GLFW_PRESS) this->activeSlot = 7;
-	if (glfwGetKey(this->window, GLFW_KEY_9) == GLFW_PRESS) this->activeSlot = 8;
+	if (glfwGetKey(this->window.get(), GLFW_KEY_1) == GLFW_PRESS) this->activeSlot = 0;
+	if (glfwGetKey(this->window.get(), GLFW_KEY_2) == GLFW_PRESS) this->activeSlot = 1;
+	if (glfwGetKey(this->window.get(), GLFW_KEY_3) == GLFW_PRESS) this->activeSlot = 2;
+	if (glfwGetKey(this->window.get(), GLFW_KEY_4) == GLFW_PRESS) this->activeSlot = 3;
+	if (glfwGetKey(this->window.get(), GLFW_KEY_5) == GLFW_PRESS) this->activeSlot = 4;
+	if (glfwGetKey(this->window.get(), GLFW_KEY_6) == GLFW_PRESS) this->activeSlot = 5;
+	if (glfwGetKey(this->window.get(), GLFW_KEY_7) == GLFW_PRESS) this->activeSlot = 6;
+	if (glfwGetKey(this->window.get(), GLFW_KEY_8) == GLFW_PRESS) this->activeSlot = 7;
+	if (glfwGetKey(this->window.get(), GLFW_KEY_9) == GLFW_PRESS) this->activeSlot = 8;
 }
 
 void Game::updateInput()
@@ -519,7 +516,7 @@ void Game::updateInput()
 
 	this->updateKeyboardInput();
 	this->updateMouseInput();
-	this->camera.updateInput(dt, -1, this->mouseOffsetX, this->mouseOffsetY);
+	this->camera->updateInput(dt, -1, this->mouseOffsetX, this->mouseOffsetY);
 }
 
 void Game::update()
@@ -538,60 +535,60 @@ void Game::render()
 
 	// Update chunks
 	if (this->chunkModel != nullptr) {
-		this->chunkModel->render(this->shaders[SHADER_CORE_PROGRAM]);
+		this->chunkModel->render(this->shaders[Constants::GameEnums::ShaderEnum::SHADER_CORE_PROGRAM].get());
 	}
 
 	// Draw Crosshair and Hotbar (UI)
 	glDisable(GL_DEPTH_TEST);
 
-	this->uiShader->use();
+	this->shaders[Constants::GameEnums::ShaderEnum::SHADER_UI]->use();
 
 	// Compute Aspect Ratio
 	int fbw, fbh;
-	glfwGetFramebufferSize(this->window, &fbw, &fbh);
+	glfwGetFramebufferSize(this->window.get(), &fbw, &fbh);
 	float aspectRatio = (float)fbh / (float)fbw;
 
 	// Send to shader
-	this->uiShader->set1f(aspectRatio, "aspectRatio");
-	this->uiShader->set1i(0, "useTexture");
+	this->shaders[Constants::GameEnums::ShaderEnum::SHADER_UI]->set1f(aspectRatio, "aspectRatio");
+	this->shaders[Constants::GameEnums::ShaderEnum::SHADER_UI]->set1i(0, "useTexture");
 
 	// Background and Selector
-	this->uiShader->setVec2f(glm::vec2(0.0f, 0.0f), "uiOffset");
-	this->uiShader->set1f(0.5f, "uiAlpha");
-	this->hotbarBgMesh->render(this->uiShader);
+	this->shaders[Constants::GameEnums::ShaderEnum::SHADER_UI]->setVec2f(glm::vec2(0.0f, 0.0f), "uiOffset");
+	this->shaders[Constants::GameEnums::ShaderEnum::SHADER_UI]->set1f(0.5f, "uiAlpha");
+	this->gameMeshes[Constants::GameEnums::MeshEnum::HOTBAR_BG_MESH]->render(this->shaders[Constants::GameEnums::ShaderEnum::SHADER_UI].get());
 
 	float selectorXOffset = this->activeSlot * 0.1f;
-	this->uiShader->setVec2f(glm::vec2(selectorXOffset, 0.0f), "uiOffset");
-	this->uiShader->set1f(0.8f, "uiAlpha");
-	this->hotbarSelectorMesh->render(this->uiShader);
+	this->shaders[Constants::GameEnums::ShaderEnum::SHADER_UI]->setVec2f(glm::vec2(selectorXOffset, 0.0f), "uiOffset");
+	this->shaders[Constants::GameEnums::ShaderEnum::SHADER_UI]->set1f(0.8f, "uiAlpha");
+	this->gameMeshes[Constants::GameEnums::MeshEnum::HOTBAR_SELECTOR_MESH]->render(this->shaders[Constants::GameEnums::ShaderEnum::SHADER_UI].get());
 
 	// Crosshair
-	this->uiShader->setVec2f(glm::vec2(0.0f, 0.0f), "uiOffset");
-	this->uiShader->set1f(1.0f, "uiAlpha");
-	this->crosshairMesh->render(this->uiShader);
+	this->shaders[Constants::GameEnums::ShaderEnum::SHADER_UI]->setVec2f(glm::vec2(0.0f, 0.0f), "uiOffset");
+	this->shaders[Constants::GameEnums::ShaderEnum::SHADER_UI]->set1f(1.0f, "uiAlpha");
+	this->gameMeshes[Constants::GameEnums::MeshEnum::CROSSHAIR_MESH]->render(this->shaders[Constants::GameEnums::ShaderEnum::SHADER_UI].get());
 
 	// Draw Hotbar Icons
 	glClear(GL_DEPTH_BUFFER_BIT);
 	glEnable(GL_DEPTH_TEST);
 
-	this->uiShader->set1i(1, "useTexture");
-	this->uiShader->set1i(0, "uiTexture");
+	this->shaders[Constants::GameEnums::ShaderEnum::SHADER_UI]->set1i(1, "useTexture");
+	this->shaders[Constants::GameEnums::ShaderEnum::SHADER_UI]->set1i(0, "uiTexture");
 
 	for (int i = 0; i < 9; ++i) {
 		uint8_t blockType = this->hotbarBlocks[i];
-		if (blockType == BlockType::AIR) continue;
+		if (blockType == Constants::BlockType::AIR) continue;
 
 		float iconXOffset = -0.40f + (i * 0.1f);
-		this->uiShader->setVec2f(glm::vec2(iconXOffset, -0.90f), "uiOffset");
+		this->shaders[Constants::GameEnums::ShaderEnum::SHADER_UI]->setVec2f(glm::vec2(iconXOffset, -0.90f), "uiOffset");
 
-		this->textures[TEX_ATLAS]->bind(0);
+		this->textures[Constants::GameEnums::TextureEnum::TEX_ATLAS]->bind(0);
 
-		if (blockType == BlockType::GRASS) this->iconGrass->render(this->uiShader);
-		else if (blockType == BlockType::DIRT) this->iconDirt->render(this->uiShader);
-		else if (blockType == BlockType::STONE) this->iconStone->render(this->uiShader);
+		if (blockType == Constants::BlockType::GRASS) this->gameMeshes[Constants::GameEnums::MeshEnum::ICON_GRASS_MESH]->render(this->shaders[Constants::GameEnums::ShaderEnum::SHADER_UI].get());
+		else if (blockType == Constants::BlockType::DIRT) this->gameMeshes[Constants::GameEnums::MeshEnum::ICON_DIRT_MESH]->render(this->shaders[Constants::GameEnums::ShaderEnum::SHADER_UI].get());
+		else if (blockType == Constants::BlockType::STONE) this->gameMeshes[Constants::GameEnums::MeshEnum::ICON_STONE_MESH]->render(this->shaders[Constants::GameEnums::ShaderEnum::SHADER_UI].get());
 	}
 
-	glfwSwapBuffers(window);
+	glfwSwapBuffers(this->window.get());
 	glFlush();
 
 	glBindVertexArray(0);
@@ -599,5 +596,3 @@ void Game::render()
 	glActiveTexture(0);
 	glBindTexture(GL_TEXTURE_2D, 0);
 }
-
-// Static Functions

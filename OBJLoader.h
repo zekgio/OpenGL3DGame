@@ -1,29 +1,10 @@
 #pragma once
 
-//STD
-#include <iostream>
-#include <string>
-#include <fstream>
-#include <vector>
+// External Libs
+#include "libs.h"
 #include <sstream>
-#include <algorithm>
 
-//GLEW
-#include <GL/glew.h>
-
-//GLFW
-#include <GLFW/glfw3.h> 
-
-//MATH!
-#include <glm/glm.hpp>
-#include <glm/vec2.hpp>
-#include <glm/vec3.hpp>
-#include <glm/vec4.hpp>
-#include <glm/mat4x4.hpp>
-#include <glm/gtc\matrix_transform.hpp>
-#include <glm/gtc\type_ptr.hpp>
-
-//Own Libs
+// Own Libs
 #include "Vertex.h"
 #include "Texture.h"
 #include "Material.h"

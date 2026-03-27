@@ -21,15 +21,3 @@
 #include <glm/gtc\type_ptr.hpp>
 
 #include <SOIL2/SOIL2.h>
-
-#include "Shader.h"
-#include "Texture.h"
-#include "Material.h"
-#include "Vertex.h"
-#include "Mesh.h"
-#include "Model.h"
-#include "Primitives.h"
-#include "Light.h"
-#include "Camera.h"
-#include "Chunk.h"
-#include "Constants.h"

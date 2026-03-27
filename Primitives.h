@@ -10,28 +10,19 @@
 class Primitive
 {
 public:
-	Primitive(){}
-
-	virtual ~Primitive() {}
+	Primitive() = default;
+	virtual ~Primitive() = default;
 
 	void set(const Vertex* vertices, const unsigned nrOfVertices,
-		const GLuint* indices, const unsigned nrOfIndices
-	)
+		const GLuint* indices, const unsigned nrOfIndices)
 	{
-		for (size_t i = 0; i < nrOfVertices; ++i)
-		{
-			this->vertices.push_back(vertices[i]);
-		}
-		for (size_t i = 0; i < nrOfIndices; ++i)
-		{
-			this->indices.push_back(indices[i]);
-		}
+		this->vertices.assign(vertices, vertices + nrOfVertices);
+		if (indices != nullptr && nrOfIndices > 0)
+			this->indices.assign(indices, indices + nrOfIndices);
 	}
 
-	inline Vertex* getVertices() { return this->vertices.data(); }
-	inline GLuint* getIndices() { return this->indices.data(); }
-	inline const unsigned getNrOfVertices() { return this->vertices.size(); }
-	inline const unsigned getNrOfIndices() { return this->indices.size(); }
+	inline const std::vector<Vertex>& getVertices() const { return this->vertices; }
+	inline const std::vector<GLuint>& getIndices() const { return this->indices; }
 
 private:
 	std::vector<Vertex> vertices;
