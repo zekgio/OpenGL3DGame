@@ -81,10 +81,10 @@ void main()
     vec3 viewDir = normalize(cameraPos - vs_position);
     
     // 1. Ambient (Hemisphere) 
-    float skyFactor = (norm.y + 1.0) * 0.5; 
-    vec3 skyColor = vec3(0.2f, 0.6f, 0.8f);      // Warmer Sky
-    vec3 groundColor = vec3(0.42, 0.15, 0.06); // Darker Ground
-    vec3 ambient = mix(groundColor, skyColor, skyFactor) * 0.4;
+    float skyFactor = (norm.y + 1.0) * 0.4; 
+    vec3 skyColor = vec3(0.3f, 0.55f, 0.78f);  // Warmer Sky
+    vec3 groundColor = vec3(0.32, 0.15, 0.06); // Darker Ground
+    vec3 ambient = mix(groundColor, skyColor, skyFactor) * 0.2;
     
     // 2. Direct Lights
     float specMask = texture(material.specular_tex, vs_texcoord).r;
@@ -93,7 +93,7 @@ void main()
     vec3 pointLighting = CalcPointLight(pointLight, norm, vs_position, viewDir) * specMask;
     
     // Sum components
-    vec3 lighting = ambient + directLighting + pointLighting;
+    vec3 lighting = (ambient + directLighting + pointLighting)*0.9f + vec3(1.f,1.f,1.f)*0.1;
     
     // 3. Base Color and Lighting
     vec4 texColor = texture(material.diffuse_tex, vs_texcoord);
@@ -103,7 +103,7 @@ void main()
     vec3 finalColor = texColor.rgb * lighting;
 
     // 4. Tone Mapping
-    finalColor = finalColor / (finalColor + vec3(1.0));  // Reinhard
+    //finalColor = finalColor / (finalColor + vec3(1.0));  // Reinhard
 
     // 5. Gamma Correction
     finalColor = pow(finalColor, vec3(1.0 / 2.2));

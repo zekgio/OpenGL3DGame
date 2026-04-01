@@ -60,6 +60,7 @@ namespace Constants {
         const float NEAR_PLANE = 0.1f;
         const float FAR_PLANE = 1000.f;
         const float DEFAULT_FOV = 90.f;
+        const float DEFAULT_CAMERA_Y = 150.f;
         const glm::vec3 WORLD_UP(0.f, 1.f, 0.f);
     }
 
@@ -94,6 +95,21 @@ namespace Constants {
         const uint8_t GRASS = 1;
         const uint8_t DIRT = 2;
         const uint8_t STONE = 3;
+    }
+
+    // Game World Constants
+    namespace World {
+        const int CHUNK_WIDTH  = 32;
+        const int CHUNK_HEIGHT = 256;
+        const int CHUNK_DEPTH  = 32;
+        const int MOUNTAIN_THRESHOLD = 150;
+        const int MIN_SURFACE        = 70;
+        const int MIN_DIRT_DEPTH = 0;
+        const int MAX_DIRT_DEPTH = 3;
+        const int DEFAULT_SURFACE_HEIGHT = 125;
+        const int SURFACE_NOISE_COEFF = 55;
+        const float TERRAIN_NOISE_FREQUENCY = 0.06f;
+        const float CAVE_NOISE_FREQUENCY    = 0.04f;
     }
 }
 

@@ -21,6 +21,7 @@ public:
 
 	// Functions
 	virtual void sendToShader(Shader& program) = 0;
+	virtual glm::vec3 getColor() const { return this->color; }
 };
 
 class DirectionalLight : public Light

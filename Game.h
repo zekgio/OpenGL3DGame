@@ -32,6 +32,10 @@ private:
 	// Delta Time
 	float dt, currTime, lastTime;
 	float clickCooldown;
+	// FPS Counter
+	float fpsTimer = 0.0f;
+	int frameCount = 0;
+	float maxFrameTime = 0.0f;
 	// Mouse Input
 	double lastMouseX, lastMouseY;
 	double mouseX, mouseY;
@@ -55,6 +59,10 @@ private:
 	// Chunk and Base Models
 	std::unique_ptr<Chunk> myChunk;
 	std::unique_ptr<Model> chunkModel;
+	// Block Selection
+	std::unique_ptr<Mesh> selectionWireframe;
+	bool isLookingAtBlock = false;
+	glm::vec3 targetBlockPos = glm::vec3(0.f);
 	
 	int activeSlot;
 	uint8_t hotbarBlocks[9] = {

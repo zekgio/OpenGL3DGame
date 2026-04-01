@@ -30,6 +30,20 @@ public:
 		this->updateModelMatrix();
 	}
 
+	Mesh(std::vector<Vertex> vert, std::vector<GLuint> indi,
+		glm::vec3 position = glm::vec3(0.f),
+		glm::vec3 origin = glm::vec3(0.f),
+		glm::vec3 rotation = glm::vec3(0.f),
+		glm::vec3 scale = glm::vec3(1.f))
+		: position(position), origin(origin), rotation(rotation), Scale(scale)
+	{
+		this->vertices = vert;
+		this->indices = indi;
+
+		this->initVAO();
+		this->updateModelMatrix();
+	}
+
 	Mesh(Primitive* primitive,
 		glm::vec3 position = glm::vec3(0.f),
 		glm::vec3 origin = glm::vec3(0.f),

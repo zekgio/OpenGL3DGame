@@ -1,11 +1,15 @@
 #include "Game.h"
 #include "OBJLoader.h"
 
+// TODO:
+//    -Better terrain generation (biomes, caves, ores, etc.)
+//	  -Mesh optimization (greedy meshing, face culling, etc.)
+
 // Private Functions
 void Game::initCamera()
 {
 	this->camera = std::make_unique<Camera>(
-		glm::vec3(5.f, 90.f, 5.f),
+		glm::vec3(5.f, Constants::Camera::DEFAULT_CAMERA_Y, 5.f),
 		glm::vec3(0.f, 0.f, 1.f),
 		glm::vec3(0.f, 1.f, 0.f)
 	);
@@ -91,7 +95,6 @@ void Game::initShaders()
 
 void Game::initTextures()
 {
-	;
 	this->textures.push_back( std::make_unique<Texture>(Constants::Resources::CAT, GL_TEXTURE_2D) );
 	this->textures.push_back( std::make_unique<Texture>(Constants::Resources::CAT_SPECULAR, GL_TEXTURE_2D) );
 	this->textures.push_back( std::make_unique<Texture>(Constants::Resources::BOX, GL_TEXTURE_2D) );
@@ -109,27 +112,21 @@ void Game::initMaterials()
 }
 
 void Game::initModels()
-{
-	// Inizializza i dati del chunk
-	this->myChunk = std::make_unique<Chunk>(); 
-
-	// Lascia che il chunk costruisca l'unica mega-mesh ottimizzata!
+{ 
+	// Initialize (for now only one) chunk
+	int myWorldSeed = static_cast<int>(std::time(nullptr));
+	Chunk::worldSeed = myWorldSeed;
+	this->myChunk = std::make_unique<Chunk>();
 	Mesh* chunkMesh = this->myChunk->buildMesh();
 
-	std::vector<Mesh*> meshesToPass;
-	meshesToPass.push_back(chunkMesh);
-
-	// Crea il Modello usando la texture Atlas
+	// Create Model using atlas texture
 	this->chunkModel = std::make_unique<Model>(
 		glm::vec3(0.f),
 		this->materials[Constants::GameEnums::MaterialEnum::MAT_1].get(),
 		this->textures[Constants::GameEnums::TextureEnum::TEX_ATLAS].get(),
 		this->textures[Constants::GameEnums::TextureEnum::TEX_ATLAS_SPECULAR].get(),
-		meshesToPass
+		chunkMesh
 	);
-
-	// Pulizia del vettore temporaneo
-	meshesToPass.clear();
 
 	// MESHES INITIALIZATION
 	this->gameMeshes.resize(Constants::GameEnums::MeshEnum::COUNT_MESHES);
@@ -186,7 +183,7 @@ void Game::initModels()
 	// ISOMETRIC BLOCK ICONS
 	Chunk* tempChunk = new Chunk();
 	// Empty chunk
-	for (int i = 0; i < Chunk::CHUNK_WIDTH * Chunk::CHUNK_HEIGHT * Chunk::CHUNK_DEPTH; ++i) {
+	for (int i = 0; i < Constants::World::CHUNK_WIDTH * Constants::World::CHUNK_HEIGHT * Constants::World::CHUNK_DEPTH; ++i) {
 		tempChunk->blocks[i] = Constants::BlockType::AIR;
 	}
 
@@ -207,6 +204,15 @@ void Game::initModels()
 	this->gameMeshes[Constants::GameEnums::MeshEnum::ICON_STONE_MESH].reset(tempChunk->buildMesh());
 	this->gameMeshes[Constants::GameEnums::MeshEnum::ICON_STONE_MESH].get()->setRotation(glm::vec3(25.f, 45.f, 0.f));
 	this->gameMeshes[Constants::GameEnums::MeshEnum::ICON_STONE_MESH].get()->setScale(glm::vec3(0.06f));
+
+	// SELECTION WIREFRAME
+	for (int i = 0; i < Constants::World::CHUNK_WIDTH * Constants::World::CHUNK_HEIGHT * Constants::World::CHUNK_DEPTH; ++i) {
+		tempChunk->blocks[i] = Constants::BlockType::AIR;
+	}
+	tempChunk->setBlock(0, 0, 0, Constants::BlockType::STONE);
+
+	this->selectionWireframe.reset(tempChunk->buildMesh());
+	this->selectionWireframe->setScale(glm::vec3(1.01f));
 
 	delete tempChunk;
 }
@@ -354,6 +360,25 @@ void Game::updateDt()
 	this->currTime = static_cast<float>(glfwGetTime());
 	this->dt = this->currTime - this->lastTime;
 	this->lastTime = this->currTime;
+
+	// FPS Counter (For debugging)
+	this->frameCount++;
+	this->fpsTimer += this->dt;
+
+	if (this->dt > this->maxFrameTime) {
+		this->maxFrameTime = this->dt;
+	}
+
+	if (this->fpsTimer >= 1.0f)
+	{
+		int maxMs = (int)(this->maxFrameTime * 1000.0f);
+		std::string title = "Voxel Engine | FPS: " + std::to_string(this->frameCount) +
+			" | Max Spike: " + std::to_string(maxMs) + " ms"; 
+		glfwSetWindowTitle(this->window.get(), title.c_str());
+		this->frameCount = 0;
+		this->fpsTimer -= 1.0f; // -1 instead of 0 in order to avoid losing fractional seconds, which can add up over time
+		this->maxFrameTime = 0.0f;
+	}
 }
 
 void Game::updateMouseInput()
@@ -381,50 +406,54 @@ void Game::updateMouseInput()
 	}
 
 	// RAYCASTING
-	if (this->clickCooldown <= 0.0f)
+	glm::vec3 rayPos = this->camera->getPosition();
+	glm::vec3 rayDir = this->camera->getFront();
+	float stepSize = 0.05f; // Ray precision
+	float reach = 6.0f;     // Range (in blocks)
+
+	glm::vec3 lastEmptyPos = rayPos;
+	bool hit = false;
+	int hitX, hitY, hitZ;          // Coords of hit block
+	int lastX, lastY, lastZ;       // Coords of last empty block
+
+	// Ray advancement loop
+	for (float d = 0; d < reach; d += stepSize)
 	{
-		bool leftClick = glfwGetMouseButton(this->window.get(), GLFW_MOUSE_BUTTON_1) == GLFW_PRESS;
-		bool rightClick = glfwGetMouseButton(this->window.get(), GLFW_MOUSE_BUTTON_2) == GLFW_PRESS;
+		rayPos += rayDir * stepSize;
 
-		if (leftClick || rightClick)
+		// Round position (Cube goes from -0.5 to +0.5 relatively to its centre)
+		int cx = (int)std::round(rayPos.x);
+		int cy = (int)std::round(rayPos.y);
+		int cz = (int)std::round(rayPos.z);
+
+		if (this->myChunk->getBlock(cx, cy, cz) != Constants::BlockType::AIR)
 		{
-			this->clickCooldown = 0.2f; // 200 ms cooldown
+			hit = true;
+			hitX = cx; hitY = cy; hitZ = cz;
 
-			glm::vec3 rayPos = this->camera->getPosition();
-			glm::vec3 rayDir = this->camera->getFront();
-			float stepSize = 0.05f; // Ray precision
-			float reach = 6.0f;     // Range (in blocks)
+			lastX = (int)std::round(lastEmptyPos.x);
+			lastY = (int)std::round(lastEmptyPos.y);
+			lastZ = (int)std::round(lastEmptyPos.z);
+			break;
+		}
+		lastEmptyPos = rayPos; // Save empty pos
+	}
 
-			glm::vec3 lastEmptyPos = rayPos;
-			bool hit = false;
-			int hitX, hitY, hitZ;          // Coords of hit block
-			int lastX, lastY, lastZ;       // Coords of last empty block
+	this->isLookingAtBlock = hit;
 
-			// Ray advancement loop
-			for (float d = 0; d < reach; d += stepSize)
+	if (hit)
+	{
+		this->targetBlockPos = glm::vec3(hitX, hitY, hitZ);
+
+		if (this->clickCooldown <= 0.0f)
+		{
+			bool leftClick = glfwGetMouseButton(this->window.get(), GLFW_MOUSE_BUTTON_1) == GLFW_PRESS;
+			bool rightClick = glfwGetMouseButton(this->window.get(), GLFW_MOUSE_BUTTON_2) == GLFW_PRESS;
+
+			if (leftClick || rightClick)
 			{
-				rayPos += rayDir * stepSize;
+				this->clickCooldown = 0.2f; // 200 ms cooldown
 
-				// Round position (Cube goes from -0.5 to +0.5 relatively to its centre)
-				int cx = (int)std::round(rayPos.x);
-				int cy = (int)std::round(rayPos.y);
-				int cz = (int)std::round(rayPos.z);
-
-				if (this->myChunk->getBlock(cx, cy, cz) != Constants::BlockType::AIR)
-				{
-					hit = true;
-					hitX = cx; hitY = cy; hitZ = cz;
-
-					lastX = (int)std::round(lastEmptyPos.x);
-					lastY = (int)std::round(lastEmptyPos.y);
-					lastZ = (int)std::round(lastEmptyPos.z);
-					break;
-				}
-				lastEmptyPos = rayPos; // Save empty pos
-			}
-
-			if (hit)
-			{
 				if (leftClick) {
 					// Break
 					this->myChunk->setBlock(hitX, hitY, hitZ, Constants::BlockType::AIR);
@@ -453,6 +482,7 @@ void Game::updateMouseInput()
 			}
 		}
 	}
+	
 }
 
 void Game::updateKeyboardInput()
@@ -536,6 +566,28 @@ void Game::render()
 	// Update chunks
 	if (this->chunkModel != nullptr) {
 		this->chunkModel->render(this->shaders[Constants::GameEnums::ShaderEnum::SHADER_CORE_PROGRAM].get());
+	}
+
+	// Draw Selection Wireframe
+	if (this->isLookingAtBlock)
+	{
+		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+		glLineWidth(2.0f);
+		this->selectionWireframe->setPosition(this->targetBlockPos);
+
+		// Turn off lights
+		this->shaders[Constants::GameEnums::ShaderEnum::SHADER_CORE_PROGRAM]->use();
+		this->shaders[Constants::GameEnums::ShaderEnum::SHADER_CORE_PROGRAM]->setVec3f(glm::vec3(0.f), "dirLight.color");
+		this->shaders[Constants::GameEnums::ShaderEnum::SHADER_CORE_PROGRAM]->setVec3f(glm::vec3(0.f), "pointLight.color");
+		this->shaders[Constants::GameEnums::ShaderEnum::SHADER_CORE_PROGRAM]->set1i(0, "useTexture");
+
+		this->selectionWireframe->render(this->shaders[Constants::GameEnums::ShaderEnum::SHADER_CORE_PROGRAM].get());
+
+		// Turn lights back on
+		this->shaders[Constants::GameEnums::ShaderEnum::SHADER_CORE_PROGRAM]->setVec3f(this->dirLights[0]->getColor(), "dirLight.color");
+		this->shaders[Constants::GameEnums::ShaderEnum::SHADER_CORE_PROGRAM]->setVec3f(this->pointLights[0]->getColor(), "pointLight.color");
+
+		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	}
 
 	// Draw Crosshair and Hotbar (UI)

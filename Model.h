@@ -8,8 +8,7 @@
 #include "Shader.h"
 #include "Material.h"
 
-// Union Of Meshes, Responsible Of
-// Model Material, Meshes Offset
+// Union of meshes, responsible of model material, meshes offset
 class Model
 {
 private:
@@ -34,6 +33,24 @@ public:
 		this->meshes.reserve(meshesToTake.size());
 		for (Mesh* rawMesh : meshesToTake)
 			this->meshes.push_back(std::unique_ptr<Mesh>(rawMesh));
+
+		for (auto& i : this->meshes)
+		{
+			i->move(this->position);
+			i->setOrigin(this->position);
+		}
+	}
+
+	Model(glm::vec3 position, Material* material,
+		Texture* orTexDif, Texture* orTexSpc, Mesh* meshToTake)
+	{
+		this->position = position;
+		this->material = material;
+		this->overrideTextureDiffuse = orTexDif;
+		this->overrideTextureSpecular = orTexSpc;
+
+		// Directly take ownership of pointer
+		this->meshes.push_back(std::unique_ptr<Mesh>(meshToTake));
 
 		for (auto& i : this->meshes)
 		{
