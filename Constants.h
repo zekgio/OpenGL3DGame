@@ -114,7 +114,7 @@ namespace Constants {
 		const float CONT_NOISE_FREQUENCY    = 0.007f;
         const float CAVE_NOISE_FREQUENCY    = 0.04f;
         const float NORMALIZATION_EXPONENT  = 0.1f;
-        const int DEFAULT_RENDER_DISTANCE = 6;
+        const int DEFAULT_RENDER_DISTANCE = 5;
     }
 
     // Player

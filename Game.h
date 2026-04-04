@@ -69,6 +69,11 @@ private:
 	glm::vec3 targetBlockPos = glm::vec3(0.f);
 	// Player
 	std::unique_ptr<Player> player;
+	// Benchmarking Variables
+	bool isBenchmarking = false;
+	float benchmarkTimer = 0.0f;
+	int benchmarkFrames = 0;
+	bool bKeyPressed = false;
 	
 	int activeSlot;
 	uint8_t hotbarBlocks[9] = {

@@ -41,8 +41,7 @@ void Game::initWindow(const char* title, bool resizable)
 	glfwMakeContextCurrent(this->window.get()); // Important for glew
 	glfwSwapInterval(1); // if zero no vsync for benchmarking, if 1 vsync enabled
 	// TIMESTAMP OF IMPROVEMENTS (referred to release with 17 render distance without vsync, 5090rtx):
-	// After for optimization and frustum culling:    avg = 170 fps, max = 187 fps, min = 161 fps
-	// After optimization of Vertex with ChunkVertex: avg = 190 fps, max = 200 fps, min = 176 fps
+	// After Adding Benchmark mode:    avg fps: 234.8    avg ms: 4.258
 }
 
 void Game::initGLEW()
@@ -518,6 +517,21 @@ void Game::updateKeyboardInput()
 	if (glfwGetKey(this->window.get(), GLFW_KEY_7) == GLFW_PRESS) this->activeSlot = 6;
 	if (glfwGetKey(this->window.get(), GLFW_KEY_8) == GLFW_PRESS) this->activeSlot = 7;
 	if (glfwGetKey(this->window.get(), GLFW_KEY_9) == GLFW_PRESS) this->activeSlot = 8;
+
+	// Toggle Benchmarking Mode (Press B)
+	if (glfwGetKey(this->window.get(), GLFW_KEY_B) == GLFW_PRESS)
+	{
+		if (!this->bKeyPressed) {
+			this->isBenchmarking = !this->isBenchmarking;
+			this->benchmarkTimer = 0.0f;
+			this->benchmarkFrames = 0;
+			std::cout << (this->isBenchmarking ? "\n[BENCHMARK] Avviato giro di 360 gradi..." : "\n[BENCHMARK] Annullato.") << std::endl;
+		}
+		this->bKeyPressed = true;
+	}
+	else {
+		this->bKeyPressed = false;
+	}
 }
 
 void Game::updateInput()
@@ -542,6 +556,31 @@ void Game::update()
 	// Update Input
 	this->updateDt();
 	this->updateInput();
+
+	// Benchmarking Mode
+	if (this->isBenchmarking)
+	{
+		this->benchmarkTimer += this->dt;
+		this->benchmarkFrames++;
+
+		float forcedMouseOffsetX = (36.0f * this->dt) / 0.08f;
+		this->camera->updateInput(this->dt, -1, forcedMouseOffsetX, 0.0f);
+
+		if (this->benchmarkTimer >= 10.0f)
+		{
+			float avgFPS = this->benchmarkFrames / this->benchmarkTimer;
+			float avgFrameTime = (this->benchmarkTimer / this->benchmarkFrames) * 1000.0f;
+
+			std::cout << "---------------------------------" << std::endl;
+			std::cout << " RISULTATI BENCHMARK (10 SECONDI) " << std::endl;
+			std::cout << " Render Distance: " << Constants::World::DEFAULT_RENDER_DISTANCE << " Chunk" << std::endl;
+			std::cout << " FPS Medi:        " << avgFPS << std::endl;
+			std::cout << " Frame Time Medio:" << avgFrameTime << " ms" << std::endl;
+			std::cout << "---------------------------------" << std::endl;
+
+			this->isBenchmarking = false;
+		}
+	}
 }
 
 void Game::render()
