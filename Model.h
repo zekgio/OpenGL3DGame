@@ -114,3 +114,33 @@ public:
 	}
 
 };
+
+class ChunkModel
+{
+private:
+	Material* material;
+	Texture* overrideTextureDiffuse;
+	Texture* overrideTextureSpecular;
+	std::vector<std::unique_ptr<ChunkMesh>> meshes;
+	glm::vec3 position;
+
+public:
+	ChunkModel(glm::vec3 position, Material* material, Texture* orTexDif, Texture* orTexSpc, std::vector<ChunkMesh*> meshesToTake) {
+		this->position = position; this->material = material;
+		this->overrideTextureDiffuse = orTexDif; this->overrideTextureSpecular = orTexSpc;
+		this->meshes.reserve(meshesToTake.size());
+		for (ChunkMesh* rawMesh : meshesToTake) this->meshes.push_back(std::unique_ptr<ChunkMesh>(rawMesh));
+		for (auto& i : this->meshes) { i->move(this->position); i->setOrigin(this->position); }
+	}
+
+	~ChunkModel() {}
+
+	void render(Shader* shader) {
+		this->material->sendToShader(*shader);
+		shader->use();
+		for (auto& i : this->meshes) {
+			this->overrideTextureDiffuse->bind(0); this->overrideTextureSpecular->bind(1);
+			i->render(shader);
+		}
+	}
+};

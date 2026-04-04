@@ -86,6 +86,11 @@ public:
 		return this->position;
 	}
 
+	void setPosition(const glm::vec3& newPos)
+	{
+		this->position = newPos;
+	}
+
 	// Functions
 	void move(const float& dt, const Direction direction) // Called By Game
 	{
@@ -118,11 +123,11 @@ public:
 	void updateMouseInput(const float& dt, const double& offsetX, const double& offsetY)
 	{
 		// Update Pitch Yaw and Roll
-		this->pitch += static_cast<GLfloat>(offsetY) * this->sensitivity * dt;
-		this->yaw += static_cast<GLfloat>(offsetX) * this->sensitivity * dt;
+		this->pitch += static_cast<GLfloat>(offsetY) * this->sensitivity;
+		this->yaw += static_cast<GLfloat>(offsetX) * this->sensitivity;
 		
-		if (this->pitch > 80.f)		  this->pitch = 80.f;
-		else if (this->pitch < -80.f) this->pitch = -80.f;
+		if (this->pitch > 89.f)		  this->pitch = 89.f;
+		else if (this->pitch < -89.f) this->pitch = -89.f;
 
 		if (this->yaw > 360.f || this->yaw < -360.f) this->yaw = 0.f;
 	}

@@ -11,7 +11,7 @@
 #include "Mesh.h"
 #include "Model.h"
 
-struct MeshData {
+struct LoadingMeshData {
 	std::string name; // Nome del materiale (es. "Glass")
 	std::vector<GLint> pos_indices;
 	std::vector<GLint> tex_indices;
@@ -36,8 +36,8 @@ public:
 		std::vector<glm::fvec3> vertex_normals;
 
 		// Face Vectors
-		std::vector<MeshData> meshGroups;
-		MeshData* currentGroup = nullptr;
+		std::vector<LoadingMeshData> meshGroups;
+		LoadingMeshData* currentGroup = nullptr;
 
 		// Vertex Array
 		std::vector<Vertex> vertices;
@@ -136,7 +136,7 @@ public:
 
 				// Se non esiste, crealo
 				if (!found) {
-					MeshData newGroup;
+					LoadingMeshData newGroup;
 					newGroup.name = matName;
 					meshGroups.push_back(newGroup);
 					currentGroup = &meshGroups.back(); // Punta all'ultimo elemento inserito

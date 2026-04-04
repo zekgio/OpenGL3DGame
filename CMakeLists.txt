@@ -78,6 +78,9 @@ add_executable(OpenGL3DGame
     "Chunk.h"
     "Constants.h"
     "Chunk.cpp"
+    "Player.h"
+    "World.h"
+    "World.cpp"
 )
 
 target_include_directories(OpenGL3DGame PRIVATE

@@ -10,6 +10,8 @@
 #include "Material.h"
 #include "Texture.h"
 #include "Shader.h"
+#include "Player.h"
+#include "World.h"
 
 // Structs
 struct WindowDeleter {
@@ -53,16 +55,20 @@ private:
 	std::vector<std::unique_ptr<Shader>> shaders;
 	std::vector<std::unique_ptr<Texture>> textures;
 	std::vector<std::unique_ptr<Mesh>> gameMeshes;
+	std::unique_ptr<ChunkMesh> selectionWireframe;
+	std::unique_ptr<ChunkMesh> iconGrassMesh;
+	std::unique_ptr<ChunkMesh> iconDirtMesh;
+	std::unique_ptr<ChunkMesh> iconStoneMesh;
 	std::vector<std::unique_ptr<Material>> materials;
 	std::vector<std::unique_ptr<PointLight>> pointLights;
 	std::vector<std::unique_ptr<DirectionalLight>> dirLights;
 	// Chunk and Base Models
-	std::unique_ptr<Chunk> myChunk;
-	std::unique_ptr<Model> chunkModel;
+	std::unique_ptr<World> world;
 	// Block Selection
-	std::unique_ptr<Mesh> selectionWireframe;
 	bool isLookingAtBlock = false;
 	glm::vec3 targetBlockPos = glm::vec3(0.f);
+	// Player
+	std::unique_ptr<Player> player;
 	
 	int activeSlot;
 	uint8_t hotbarBlocks[9] = {

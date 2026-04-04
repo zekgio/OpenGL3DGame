@@ -16,14 +16,21 @@ enum class FaceDirection {
 	BOTTOM = 5
 };
 
+// Memorize only vertices and indices for mesh generation
+struct MeshData {
+	std::vector<ChunkVertex> vertices;
+	std::vector<GLuint> indices;
+};
+
 class Chunk
 {
 public:
 	static int worldSeed;
-
+	const int chunkX, chunkZ;
+	const int worldOffsetX, worldOffsetZ;
 	std::vector<uint8_t> blocks;
 
-	Chunk();
+	Chunk(int x, int z);
 
 	inline int getIndex(int x, int y, int z) const {
 		return x + y * Constants::World::CHUNK_WIDTH + z * Constants::World::CHUNK_WIDTH * Constants::World::CHUNK_HEIGHT;
@@ -41,5 +48,5 @@ public:
 
 	int getTextureIndex(uint8_t type, FaceDirection face);
 
-	Mesh* buildMesh();
+	MeshData buildMesh();
 };

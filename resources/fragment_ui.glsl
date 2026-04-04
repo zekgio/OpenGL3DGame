@@ -11,8 +11,7 @@ uniform sampler2D uiTexture;
 
 void main() {
     if (useTexture) {
-        vec2 flippedUV = vec2(vs_texcoord.x, 1.0 - vs_texcoord.y);
-        vec4 texColor = texture(uiTexture, flippedUV);
+        vec4 texColor = texture(uiTexture, vs_texcoord);
         
         if (texColor.a < 0.1) discard;
         

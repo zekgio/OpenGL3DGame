@@ -12,7 +12,8 @@ namespace Constants {
         {
             const int SHADER_CORE_PROGRAM = 0;
             const int SHADER_UI = 1;
-			const int COUNT_SHADERS = 2;
+            const int SHADER_ICON = 2;
+			const int COUNT_SHADERS = 3;
         }
 
 		namespace TextureEnum
@@ -49,8 +50,8 @@ namespace Constants {
     {
 		const std::string CAT = "images/cat.jpg";
         const std::string CAT_SPECULAR = "images/cat_specular.jpg";
-        const std::string BOX = "images/box.jpg";
-        const std::string BOX_SPECULAR = "images/box_specular.jpg";
+        const std::string BOX = "images/box.png";
+        const std::string BOX_SPECULAR = "images/box_specular.png";
         const std::string ATLAS = "images/atlas.jpg";
         const std::string ATLAS_SPECULAR = "images/atlas_specular.jpg";
     }
@@ -74,13 +75,14 @@ namespace Constants {
     namespace Input {
         const float CLICK_COOLDOWN_TIME = 0.5f;
 		const float MOVEMENT_SPEED = 3.0f;
-		const float MOUSE_SENSITIVITY = 8.f;
+		const float MOUSE_SENSITIVITY = 0.08f;
     }
 
     // OpenGL
     namespace OpenGL {
         const int DEFAULT_GL_VERSION_MAJOR = 4;
         const int DEFAULT_GL_VERSION_MINOR = 5;
+        const float TARGET_FPS = 180.f;
     }
 
     // Screen
@@ -99,17 +101,26 @@ namespace Constants {
 
     // Game World Constants
     namespace World {
-        const int CHUNK_WIDTH  = 32;
+        const int CHUNK_WIDTH  = 16;
         const int CHUNK_HEIGHT = 256;
-        const int CHUNK_DEPTH  = 32;
+        const int CHUNK_DEPTH  = 16;
         const int MOUNTAIN_THRESHOLD = 150;
         const int MIN_SURFACE        = 70;
         const int MIN_DIRT_DEPTH = 0;
         const int MAX_DIRT_DEPTH = 3;
         const int DEFAULT_SURFACE_HEIGHT = 125;
         const int SURFACE_NOISE_COEFF = 55;
-        const float TERRAIN_NOISE_FREQUENCY = 0.06f;
+        const float TERRAIN_NOISE_FREQUENCY = 0.04f;
+		const float CONT_NOISE_FREQUENCY    = 0.007f;
         const float CAVE_NOISE_FREQUENCY    = 0.04f;
+        const float NORMALIZATION_EXPONENT  = 0.1f;
+        const int DEFAULT_RENDER_DISTANCE = 6;
+    }
+
+    // Player
+    namespace Player {
+        const float WALKING_SPEED = 30.f;
+        const float RUNNING_SPEED = 52.0f;
     }
 }
 
