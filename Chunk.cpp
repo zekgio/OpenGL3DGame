@@ -109,105 +109,165 @@ int Chunk::getTextureIndex(uint8_t type, FaceDirection face) {
 	return 2; // Generic fallback
 }
 
-MeshData Chunk::buildMesh()
+MeshData Chunk::buildMesh() // Implementing the Greedy Meshing algorithm
 {
-	std::vector<ChunkVertex> vertices;
-	std::vector<GLuint> indices;
-	GLuint indexCount = 0;
+	MeshData meshData;
 
-	// Reserve "reasonable" size
-	vertices.reserve(10000);
-	indices.reserve(15000);
+	meshData.vertices.reserve(1800);
+	meshData.indices.reserve(2700);
 
-	glm::vec3 c(1.0f); // Default white
+	// Renaming for clarity
+	const int W = Constants::World::CHUNK_WIDTH;
+	const int H = Constants::World::CHUNK_HEIGHT;
+	const int D = Constants::World::CHUNK_DEPTH;
 
-	for (int x = 0; x < CHUNK_WIDTH; ++x) {
-		for (int y = 0; y < CHUNK_HEIGHT; ++y) {
-			for (int z = 0; z < CHUNK_DEPTH; ++z) {
+	const int AREA_WH = W * H;
 
-				uint8_t type = getBlock(x, y, z);
-				if (type == Constants::BlockType::AIR) continue;
+	// Lambda helper
+	auto getBlock = [&](int x, int y, int z) -> uint8_t {
+		return this->blocks[x + y * W + z * AREA_WH];
+	};
 
-				glm::vec3 pos(x + worldOffsetX, y, z + worldOffsetZ); // Current position
+	for (int axis = 0; axis < 3; ++axis)
+	{
+		int u = (axis + 1) % 3;
+		int v = (axis + 2) % 3;
 
-				// Lambda to generate vertices and indices for a face
-				auto addFace = [&](FaceDirection dir, glm::vec3 bl, glm::vec3 br, glm::vec3 tr, glm::vec3 tl)
+		int x[3] = { 0 };
+		int q[3] = { 0 };
+		q[axis] = 1; // Direction vector
+
+		// 2D mask for current plane. Max dim = H * W (256*16 = 4096)
+		uint32_t mask[4096];
+
+		int limitAxis = (axis == 0) ? W : (axis == 1) ? H : D;
+		int limitU = (u == 0) ? W : (u == 1) ? H : D;
+		int limitV = (v == 0) ? W : (v == 1) ? H : D;
+
+		// Moves along the current axis
+		for (x[axis] = -1; x[axis] < limitAxis; )
+		{
+			int n = 0;
+
+			// Creating 2D mask for visible faces on the current plane
+			for (x[v] = 0; x[v] < limitV; ++x[v])
+			{
+				for (x[u] = 0; x[u] < limitU; ++x[u])
+				{
+					// Take current and adjacent block
+					uint8_t block1 = (x[axis] >= 0) ? getBlock(x[0], x[1], x[2]) : Constants::BlockType::AIR;
+					uint8_t block2 = (x[axis] < limitAxis - 1) ? getBlock(x[0] + q[0], x[1] + q[1], x[2] + q[2]) : Constants::BlockType::AIR;
+
+					bool solid1 = (block1 != Constants::BlockType::AIR);
+					bool solid2 = (block2 != Constants::BlockType::AIR);
+
+					if (solid1 == solid2) 
+						mask[n++] = 0;
+					else if (solid1) 
+						mask[n++] = block1 | (1 << 8);
+					else
+						mask[n++] = block2 | (2 << 8);
+				}
+			}
+			x[axis]++; // Advance
+
+			// Greedy Merge
+			n = 0;
+			for (int j = 0; j < limitV; ++j)
+			{
+				for (int i = 0; i < limitU; )
+				{
+					if (mask[n] != 0)
 					{
-						// Note: x, y, z are relative to the local chunk
-						int texIdx = getTextureIndex(type, dir);
-						uint32_t vBL = ChunkVertex::pack(  // The final parameter is uv
-							(uint32_t)std::round(x + bl.x + 0.5f),
-							(uint32_t)std::round(y + bl.y + 0.5f),
-							(uint32_t)std::round(z + bl.z + 0.5f),
-							texIdx,
-							static_cast<int>(dir),
-							0
-						);
+						uint32_t currentMask = mask[n];
 
-						uint32_t vBR = ChunkVertex::pack(
-							(uint32_t)std::round(x + br.x + 0.5f),
-							(uint32_t)std::round(y + br.y + 0.5f),
-							(uint32_t)std::round(z + br.z + 0.5f),
-							texIdx,
-							static_cast<int>(dir),
-							1
-						);
+						// Compute rectangle width
+						int width = 1;
+						while (i + width < limitU && mask[n + width] == currentMask) {
+							width++;
+						}
 
-						uint32_t vTR = ChunkVertex::pack(
-							(uint32_t)std::round(x + tr.x + 0.5f),
-							(uint32_t)std::round(y + tr.y + 0.5f),
-							(uint32_t)std::round(z + tr.z + 0.5f),
-							texIdx,
-							static_cast<int>(dir),
-							2
-						);
+						// Compute rectangle height
+						int height = 1;
+						bool done = false;
+						while (j + height < limitV) {
+							for (int k = 0; k < width; ++k) {
+								if (mask[n + k + height * limitU] != currentMask) {
+									done = true;
+									break;
+								}
+							}
+							if (done) break;
+							height++;
+						}
 
-						uint32_t vTL = ChunkVertex::pack(
-							(uint32_t)std::round(x + tl.x + 0.5f),
-							(uint32_t)std::round(y + tl.y + 0.5f),
-							(uint32_t)std::round(z + tl.z + 0.5f),
-							texIdx,
-							static_cast<int>(dir),
-							3
-						);
+						// Generate Vertices and quads
+						x[u] = i;
+						x[v] = j;
 
-						vertices.push_back({ vBL });
-						vertices.push_back({ vBR });
-						vertices.push_back({ vTR });
-						vertices.push_back({ vTL });
+						int du[3] = { 0 }, dv[3] = { 0 };
+						du[u] = width;
+						dv[v] = height;
 
-						indices.push_back(indexCount + 0); indices.push_back(indexCount + 1); indices.push_back(indexCount + 2);
-						indices.push_back(indexCount + 2); indices.push_back(indexCount + 3); indices.push_back(indexCount + 0);
-						indexCount += 4;
-					};
-				// Neighbors check and face generation
-				// Frontal (Z + 1)
-				if (getBlock(x, y, z + 1) == Constants::BlockType::AIR)
-					addFace(FaceDirection::FRONT, glm::vec3(-0.5f, -0.5f, 0.5f), glm::vec3(0.5f, -0.5f, 0.5f), glm::vec3(0.5f, 0.5f, 0.5f), glm::vec3(-0.5f, 0.5f, 0.5f));
+						uint8_t blockType = currentMask & 0xFF;
+						uint8_t direction = (currentMask >> 8) & 0xFF;
 
-				// Posterior (Z - 1)
-				if (getBlock(x, y, z - 1) == Constants::BlockType::AIR)
-					addFace(FaceDirection::BACK, glm::vec3(0.5f, -0.5f, -0.5f), glm::vec3(-0.5f, -0.5f, -0.5f), glm::vec3(-0.5f, 0.5f, -0.5f), glm::vec3(0.5f, 0.5f, -0.5f));
+						// Translate normal shaders (0:FRONT, 1:BACK, 2:LEFT, 3:RIGHT, 4:TOP, 5:BOTTOM)
+						uint32_t norm = 0;
+						if (axis == 0) norm = (direction == 1) ? 3 : 2;
+						if (axis == 1) norm = (direction == 1) ? 4 : 5;
+						if (axis == 2) norm = (direction == 1) ? 0 : 1;
 
-				// Left (X - 1)
-				if (getBlock(x - 1, y, z) == Constants::BlockType::AIR)
-					addFace(FaceDirection::LEFT, glm::vec3(-0.5f, -0.5f, -0.5f), glm::vec3(-0.5f, -0.5f, 0.5f), glm::vec3(-0.5f, 0.5f, 0.5f), glm::vec3(-0.5f, 0.5f, -0.5f));
+						// Texture ID
+						uint32_t texID = 0;
 
-				// Right (X + 1)
-				if (getBlock(x + 1, y, z) == Constants::BlockType::AIR)
-					addFace(FaceDirection::RIGHT, glm::vec3(0.5f, -0.5f, 0.5f), glm::vec3(0.5f, -0.5f, -0.5f), glm::vec3(0.5f, 0.5f, -0.5f), glm::vec3(0.5f, 0.5f, 0.5f));
+						if (blockType == Constants::BlockType::GRASS)
+						{
+							if (norm == 4) texID = 0;
+							else if (norm == 5) texID = 2;
+							else texID = 1;
+						}
+						else if (blockType == Constants::BlockType::DIRT)
+							texID = 2;
+						else if (blockType == Constants::BlockType::STONE)
+							texID = 3;
 
-				// Top (Y + 1)
-				if (getBlock(x, y + 1, z) == Constants::BlockType::AIR)
-					addFace(FaceDirection::TOP, glm::vec3(-0.5f, 0.5f, 0.5f), glm::vec3(0.5f, 0.5f, 0.5f), glm::vec3(0.5f, 0.5f, -0.5f), glm::vec3(-0.5f, 0.5f, -0.5f));
+						// 4 angles
+						ChunkVertex v0 = ChunkVertex::pack(x[0], x[1], x[2], texID, norm, this->chunkX, this->chunkZ);
+						ChunkVertex v1 = ChunkVertex::pack(x[0] + du[0], x[1] + du[1], x[2] + du[2], texID, norm, this->chunkX, this->chunkZ);
+						ChunkVertex v2 = ChunkVertex::pack(x[0] + du[0] + dv[0], x[1] + du[1] + dv[1], x[2] + du[2] + dv[2], texID, norm, this->chunkX, this->chunkZ);
+						ChunkVertex v3 = ChunkVertex::pack(x[0] + dv[0], x[1] + dv[1], x[2] + dv[2], texID, norm, this->chunkX, this->chunkZ);
 
-				// Bottom (Y - 1)
-				if (getBlock(x, y - 1, z) == Constants::BlockType::AIR)
-					addFace(FaceDirection::BOTTOM, glm::vec3(-0.5f, -0.5f, -0.5f), glm::vec3(0.5f, -0.5f, -0.5f), glm::vec3(0.5f, -0.5f, 0.5f), glm::vec3(-0.5f, -0.5f, 0.5f));
+						uint32_t offset = meshData.vertices.size();
+
+						// Managing Winding Order (CCW) for Face Culling to work
+						if (direction == 1) {
+							meshData.vertices.emplace_back(v0); meshData.vertices.emplace_back(v1);
+							meshData.vertices.emplace_back(v2); meshData.vertices.emplace_back(v3);
+						}
+						else {
+							meshData.vertices.emplace_back(v0); meshData.vertices.emplace_back(v3);
+							meshData.vertices.emplace_back(v2); meshData.vertices.emplace_back(v1);
+						}
+
+						meshData.indices.push_back(offset + 0); meshData.indices.push_back(offset + 1); meshData.indices.push_back(offset + 2);
+						meshData.indices.push_back(offset + 2); meshData.indices.push_back(offset + 3); meshData.indices.push_back(offset + 0);
+
+						// Clean area covered by the rectangle from the 2D Mask
+						for (int l = 0; l < height; ++l)
+							std::memset(&mask[n + l * limitU], 0, width * sizeof(uint32_t));
+
+						// Jump to next position
+						i += width;
+						n += width;
+					}
+					else {
+						i++;
+						n++;
+					}
+				}
 			}
 		}
 	}
-
-	// Return the mesh for this chunk
-	return { vertices, indices };
+	return meshData;
 }

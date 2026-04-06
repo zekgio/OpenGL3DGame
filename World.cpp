@@ -114,7 +114,13 @@ void World::render(Shader* shader, const glm::mat4& projectionViewMatrix)
 	// Generate frustum planes for culling
 	ViewFrustum frustum;
 	frustum.update(projectionViewMatrix);
-	int chunksDrawn = 0;
+
+	// One time binding
+	shader->use();
+	this->terrainMaterial->sendToShader(*shader);
+	this->atlasTex->bind(0);
+	this->atlasSpecTex->bind(1);
+	shader->setMat4fv(glm::mat4(1.0f), "ModelMatrix");
 
 	// Iterate on loaded chunk models and render those in the frustum
 	for (auto& pair : this->chunkModels)
@@ -128,11 +134,7 @@ void World::render(Shader* shader, const glm::mat4& projectionViewMatrix)
 
 			// If inside frustum, render
 			if (frustum.isBoxInFrustum(minP, maxP))
-			{
-				shader->setVec2f(glm::vec2(minP.x, minP.z), "chunkOffset");
-				pair.second->render(shader);
-				chunksDrawn++;
-			}
+				pair.second->renderFast(shader);
 		}
 	}
 }

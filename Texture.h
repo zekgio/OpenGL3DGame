@@ -46,6 +46,51 @@ public:
 		SOIL_free_image_data(image);
 	}
 
+	// Constructor for GL_TEXTURE_2D_ARRAY
+	Texture(std::string filename, int tileWidth, int tileHeight)
+	{
+		this->type = GL_TEXTURE_2D_ARRAY;
+		unsigned char* image = SOIL_load_image(filename.c_str(), &this->width, &this->height, NULL, SOIL_LOAD_RGBA);
+
+		// Compute layer count
+		int tilesX = this->width / tileWidth;
+		int tilesY = this->height / tileHeight;
+		int layerCount = tilesX * tilesY;
+
+		// Allocate memory
+		unsigned char* arrayData = new unsigned char[tileWidth * tileHeight * 4 * layerCount];
+
+		for (int layer = 0; layer < layerCount; ++layer) {
+			int tileX = layer % tilesX;
+			int tileY = layer / tilesX;
+			for (int y = 0; y < tileHeight; ++y) {
+				for (int x = 0; x < tileWidth; ++x) {
+					// Move pixel from 2D image to 3D array
+					int srcIdx = ((tileY * tileHeight + y) * this->width + (tileX * tileWidth + x)) * 4;
+					int dstIdx = (layer * tileWidth * tileHeight + y * tileWidth + x) * 4;
+					for (int c = 0; c < 4; ++c) arrayData[dstIdx + c] = image[srcIdx + c];
+				}
+			}
+		}
+
+		glGenTextures(1, &this->id);
+		glBindTexture(this->type, this->id);
+
+		// GL_REPEAT for Greedy Meshing, GL_NEAREST for pixel art style
+		glTexParameteri(this->type, GL_TEXTURE_WRAP_S, GL_REPEAT);
+		glTexParameteri(this->type, GL_TEXTURE_WRAP_T, GL_REPEAT);
+		glTexParameteri(this->type, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(this->type, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
+
+		// Load data as 3D texture
+		glTexImage3D(this->type, 0, GL_RGBA, tileWidth, tileHeight, layerCount, 0, GL_RGBA, GL_UNSIGNED_BYTE, arrayData);
+		glGenerateMipmap(this->type);
+
+		delete[] arrayData;
+		SOIL_free_image_data(image);
+		glBindTexture(this->type, 0);
+	}
+
 	~Texture()
 	{
 		glDeleteTextures(1, &this->id);

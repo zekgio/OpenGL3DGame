@@ -143,4 +143,10 @@ public:
 			i->render(shader);
 		}
 	}
+
+	void renderFast(Shader* shader) {
+		for (auto& i : this->meshes) {
+			i->renderFast(shader);
+		}
+	}
 };

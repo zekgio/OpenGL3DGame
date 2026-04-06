@@ -39,9 +39,12 @@ void Game::initWindow(const char* title, bool resizable)
 	glfwGetFramebufferSize(this->window.get(), &this->frameBufferW, &this->frameBufferH);
 	glViewport(0, 0, this->frameBufferW, this->frameBufferH);
 	glfwMakeContextCurrent(this->window.get()); // Important for glew
-	glfwSwapInterval(1); // if zero no vsync for benchmarking, if 1 vsync enabled
+	glfwSwapInterval(0); // if zero no vsync for benchmarking, if 1 vsync enabled
 	// TIMESTAMP OF IMPROVEMENTS (referred to release with 17 render distance without vsync, 5090rtx):
-	// After Adding Benchmark mode:    avg fps: 234.8    avg ms: 4.258
+	// After Adding Benchmark mode:			avg fps: 234.8    avg ms: 4.258
+	// After Adding Greedy Meshing:			avg fps: 240.0    avg ms: 4.167
+	// Slight optimization in render calls: avg fps: 1777.3   avg ms: 0.563
+	// Removed setVec2f from chunkOffset:   avg fps: 2673.6   avg ms: 0.374
 }
 
 void Game::initGLEW()
@@ -92,7 +95,7 @@ void Game::initShaders()
 	);
 	this->shaders.push_back(
 		std::make_unique<Shader>(this->GL_VERSION_MAJOR, this->GL_VERSION_MINOR,
-			"resources/vertex_icon.glsl", "resources/fragment_ui.glsl")
+			"resources/vertex_icon.glsl", "resources/fragment_icon.glsl")
 	);
 }
 
@@ -102,8 +105,8 @@ void Game::initTextures()
 	this->textures.push_back( std::make_unique<Texture>(Constants::Resources::CAT_SPECULAR, GL_TEXTURE_2D) );
 	this->textures.push_back( std::make_unique<Texture>(Constants::Resources::BOX, GL_TEXTURE_2D) );
 	this->textures.push_back( std::make_unique<Texture>(Constants::Resources::BOX_SPECULAR, GL_TEXTURE_2D) );
-	this->textures.push_back( std::make_unique<Texture>(Constants::Resources::ATLAS, GL_TEXTURE_2D) );
-	this->textures.push_back( std::make_unique<Texture>(Constants::Resources::ATLAS_SPECULAR, GL_TEXTURE_2D) );
+	this->textures.push_back( std::make_unique<Texture>(Constants::Resources::ATLAS, 16, 16) );
+	this->textures.push_back( std::make_unique<Texture>(Constants::Resources::ATLAS_SPECULAR, 16, 16) );
 }
 
 void Game::initMaterials()
@@ -247,6 +250,7 @@ void Game::initDirectionalLights()
 
 void Game::updateUniforms()
 {
+	this->shaders[Constants::GameEnums::ShaderEnum::SHADER_CORE_PROGRAM]->use();
 	// Update View Matrix
 	this->ViewMatrix = this->camera->getViewMatrix();
 	this->shaders[Constants::GameEnums::ShaderEnum::SHADER_CORE_PROGRAM]->setMat4fv(this->ViewMatrix, "ViewMatrix");
@@ -263,6 +267,7 @@ void Game::updateUniforms()
 
 void Game::initUniforms()
 {
+	this->shaders[Constants::GameEnums::ShaderEnum::SHADER_CORE_PROGRAM]->use();
 	this->shaders[Constants::GameEnums::ShaderEnum::SHADER_CORE_PROGRAM]->setMat4fv(ViewMatrix, "ViewMatrix");
 	this->shaders[Constants::GameEnums::ShaderEnum::SHADER_CORE_PROGRAM]->setMat4fv(ProjectionMatrix, "ProjectionMatrix");
 	
@@ -374,7 +379,7 @@ void Game::updateDt()
 	if (this->fpsTimer >= 1.0f)
 	{
 		int maxMs = (int)(this->maxFrameTime * 1000.0f);
-		std::string title = "Voxel Engine | FPS: " + std::to_string(this->frameCount) +
+		std::string title = "OpenGL tutorial | FPS: " + std::to_string(this->frameCount) +
 			" | Max Spike: " + std::to_string(maxMs) + " ms"; 
 		glfwSetWindowTitle(this->window.get(), title.c_str());
 		this->frameCount = 0;

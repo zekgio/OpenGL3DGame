@@ -16,10 +16,8 @@ void main() {
         if (texColor.a < 0.1) discard;
         
         // Fake shading based on normal direction to give a sense of depth
-        float shade = 1.0;
-        if (abs(vs_normal.y) > 0.5) shade = 1.0;      // Top
-        else if (abs(vs_normal.z) > 0.5) shade = 0.8; // Front
-        else shade = 0.55;                            // Sides
+        vec3 absNorm = abs(vs_normal);
+        float shade = (absNorm.y * 1.0) + (absNorm.z * 0.8) + (absNorm.x * 0.55);
         
         fs_color = texColor * vec4(vs_color * shade, uiAlpha);
     } else {

@@ -240,6 +240,12 @@ public:
 		glBindVertexArray(0);
 	}
 
+	void renderFast(Shader* shader) {
+		if (this->vertices.empty()) return;
+		glBindVertexArray(this->VAO);
+		glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(this->indices.size()), GL_UNSIGNED_INT, 0);
+	}
+
 private:
 	std::vector<ChunkVertex> vertices;
 	std::vector<GLuint> indices;
@@ -262,8 +268,10 @@ private:
 			glBufferData(GL_ELEMENT_ARRAY_BUFFER, this->indices.size() * sizeof(GLuint), this->indices.data(), GL_STATIC_DRAW);
 		}
 
-		glVertexAttribIPointer(0, 1, GL_UNSIGNED_INT, sizeof(ChunkVertex), (void*)0);
+		glVertexAttribIPointer(0, 1, GL_UNSIGNED_INT, sizeof(ChunkVertex), (void*)offsetof(ChunkVertex, data));
 		glEnableVertexAttribArray(0);
+		glVertexAttribIPointer(1, 2, GL_SHORT, sizeof(ChunkVertex), (void*)offsetof(ChunkVertex, chunkX));
+		glEnableVertexAttribArray(1);
 
 		glBindVertexArray(0);
 	}
