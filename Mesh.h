@@ -206,8 +206,8 @@ public:
 		glm::vec3 scale = glm::vec3(1.f))
 		: position(position), origin(origin), rotation(rotation), Scale(scale)
 	{
-		this->vertices = vert;
-		this->indices = indi;
+		this->vertices = std::move(vert);
+		this->indices = std::move(indi);
 		this->initVAO();
 		this->updateModelMatrix();
 	}

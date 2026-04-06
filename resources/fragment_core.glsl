@@ -2,21 +2,7 @@
 
 struct Material
 {
-	vec3 ambient;
-	vec3 diffuse;
-	vec3 specular;
 	sampler2DArray diffuse_tex;
-	sampler2DArray specular_tex;
-};
-
-struct PointLight
-{
-    vec3 position;
-    float intensity;
-	vec3 color;
-	float constant;
-	float linear;
-	float quadratic;
 };
 
 struct DirLight {
@@ -34,79 +20,41 @@ out vec4 fs_color;
 
 // Uniforms
 uniform Material material;
-uniform PointLight pointLight;
 uniform DirLight dirLight;
 uniform vec3 cameraPos;
 
-vec3 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir)
+vec3 CalcDirLight(DirLight light, vec3 normal)
 {
     vec3 lightDir = normalize(-light.direction);
     
-    // Diffuse
+    // Only Diffuse
     float diffCoeff = max(dot(normal, lightDir), 0.0);
-    vec3 diffuse = light.color * light.intensity * material.diffuse * diffCoeff;
-    
-    // Specular
-    vec3 reflectDir = reflect(-lightDir, normal);
-    float specCoeff = pow(max(dot(viewDir, reflectDir), 0.0), 30.0);
-    vec3 specular = light.color * light.intensity * material.specular * specCoeff;
-    
-    return (diffuse + specular);
+    return light.color * light.intensity * diffCoeff;
 }
 
-vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir)
-{
-    vec3 lightDir = normalize(light.position - fragPos);
-    
-    // Diffuse
-    float diffCoeff = max(dot(normal, lightDir), 0.0);
-    vec3 diffuse = light.color * light.intensity * material.diffuse * diffCoeff;
-    
-    // Specular
-    vec3 reflectDir = reflect(-lightDir, normal);
-    float specCoeff = pow(max(dot(viewDir, reflectDir), 0.0), 30.0);
-    vec3 specular = light.color * light.intensity * material.specular * specCoeff;
-    
-    // Attenuation
-    float distance = length(light.position - fragPos);
-    float attenuation = 1.0 / (light.constant + light.linear * distance + light.quadratic * (distance * distance));
-    
-    return (diffuse + specular) * attenuation;
-}
-
-// Main
 void main()
 {
-    vec3 norm = normalize(vs_normal);
-    vec3 viewDir = normalize(cameraPos - vs_position);
-    
-    // 1. Ambient (Hemisphere) 
-    float skyFactor = (norm.y + 1.0) * 0.4; 
-    vec3 skyColor = vec3(0.3f, 0.55f, 0.78f);  // Warmer Sky
-    vec3 groundColor = vec3(0.32, 0.15, 0.06); // Darker Ground
-    vec3 ambient = mix(groundColor, skyColor, skyFactor) * 0.2;
-    
-    // 2. Direct Lights
-    float specMask = texture(material.specular_tex, vs_texcoord).r;
-    
-    vec3 directLighting = CalcDirLight(dirLight, norm, viewDir) * specMask;
-    vec3 pointLighting = CalcPointLight(pointLight, norm, vs_position, viewDir) * specMask;
-    
-    // Sum components
-    vec3 lighting = (ambient + directLighting + pointLighting)*0.9f + vec3(1.f,1.f,1.f)*0.1;
-    
-    // 3. Base Color and Lighting
+    // 1. Read Texture
     vec4 texColor = texture(material.diffuse_tex, vs_texcoord);
-    
     if(texColor.a < 0.1) discard;
 
+    vec3 norm = normalize(vs_normal);
+    
+    // 2. Ambient (Hemisphere)
+    float skyFactor = (norm.y + 1.0) * 0.4; 
+    vec3 skyColor = vec3(0.3f, 0.55f, 0.78f);  
+    vec3 groundColor = vec3(0.32, 0.15, 0.06); 
+    vec3 ambient = mix(groundColor, skyColor, skyFactor) * 0.2;
+    
+    // 3. Direct Light
+    vec3 directLighting = CalcDirLight(dirLight, norm);
+    
+    // 4. Sum and Base Color
+    vec3 lighting = (ambient + directLighting) * 0.9 + vec3(0.1); // Vec3(0.1) To avoid total darkness
     vec3 finalColor = texColor.rgb * lighting;
-
-    // 4. Tone Mapping
-    //finalColor = finalColor / (finalColor + vec3(1.0));  // Reinhard
 
     // 5. Gamma Correction
     finalColor = pow(finalColor, vec3(1.0 / 2.2));
-
+    
     fs_color = vec4(finalColor, 1.0);
 }

@@ -269,5 +269,21 @@ MeshData Chunk::buildMesh() // Implementing the Greedy Meshing algorithm
 			}
 		}
 	}
+	
+	// Extract vertices for better Y range calculation (for frustum culling)
+	if (meshData.vertices.empty()) {
+		meshData.minY = 0;
+		meshData.maxY = 0;
+	}
+	else {
+		for (const auto& v : meshData.vertices) {
+			uint32_t y = (v.data >> 5) & 0xFF;
+
+			if (y < meshData.minY) meshData.minY = y;
+			if (y > meshData.maxY) meshData.maxY = y;
+		}
+		meshData.maxY += 1;
+	}
+
 	return meshData;
 }

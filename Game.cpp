@@ -45,6 +45,7 @@ void Game::initWindow(const char* title, bool resizable)
 	// After Adding Greedy Meshing:			avg fps: 240.0    avg ms: 4.167
 	// Slight optimization in render calls: avg fps: 1777.3   avg ms: 0.563
 	// Removed setVec2f from chunkOffset:   avg fps: 2673.6   avg ms: 0.374
+	// Better frustum (fixed Bounding box): avg fps: 3037.4   avg ms: 0.329
 }
 
 void Game::initGLEW()

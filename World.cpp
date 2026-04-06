@@ -100,7 +100,9 @@ void World::update(glm::vec3 playerPos)
 				meshesToPass.push_back(newMeshPtr);
 
 				this->chunkModels[result.pos] = std::make_unique<ChunkModel>(
-					glm::vec3(0.f), this->terrainMaterial, this->atlasTex, this->atlasSpecTex, meshesToPass
+					glm::vec3(result.pos.x * Constants::World::CHUNK_WIDTH, 0.f, result.pos.y * Constants::World::CHUNK_DEPTH),
+					this->terrainMaterial, this->atlasTex, this->atlasSpecTex, meshesToPass,
+					result.meshData.minY, result.meshData.maxY
 				);
 
 				uploadsThisFrame++;
@@ -129,8 +131,8 @@ void World::render(Shader* shader, const glm::mat4& projectionViewMatrix)
 		{
 			glm::ivec2 pos = pair.first;
 
-			glm::vec3 minP(pos.x * Constants::World::CHUNK_WIDTH, 0.0f, pos.y * Constants::World::CHUNK_DEPTH);
-			glm::vec3 maxP(minP.x + Constants::World::CHUNK_WIDTH, Constants::World::CHUNK_HEIGHT, minP.z + Constants::World::CHUNK_DEPTH);
+			glm::vec3 minP(pos.x * Constants::World::CHUNK_WIDTH, pair.second->minY, pos.y * Constants::World::CHUNK_DEPTH);
+			glm::vec3 maxP(minP.x + Constants::World::CHUNK_WIDTH, pair.second->maxY, minP.z + Constants::World::CHUNK_DEPTH);
 
 			// If inside frustum, render
 			if (frustum.isBoxInFrustum(minP, maxP))
@@ -212,7 +214,7 @@ void World::setBlock(int worldX, int worldY, int worldZ, uint8_t type)
 
 		// Reconstruct the mesh for the chunk
 		MeshData newMesh = it->second->buildMesh();
-		ChunkMesh* newMeshPtr = new ChunkMesh(newMesh.vertices, newMesh.indices);
+		ChunkMesh* newMeshPtr = new ChunkMesh(std::move(newMesh.vertices), std::move(newMesh.indices));
 		std::vector<ChunkMesh*> meshesToPass;
 		meshesToPass.push_back(newMeshPtr);
 
@@ -222,7 +224,9 @@ void World::setBlock(int worldX, int worldY, int worldZ, uint8_t type)
 			this->terrainMaterial,
 			this->atlasTex,
 			this->atlasSpecTex,
-			meshesToPass
+			meshesToPass,
+			newMesh.minY,
+			newMesh.maxY
 		);
 	}
 }

@@ -125,9 +125,15 @@ private:
 	glm::vec3 position;
 
 public:
-	ChunkModel(glm::vec3 position, Material* material, Texture* orTexDif, Texture* orTexSpc, std::vector<ChunkMesh*> meshesToTake) {
-		this->position = position; this->material = material;
-		this->overrideTextureDiffuse = orTexDif; this->overrideTextureSpecular = orTexSpc;
+	int minY, maxY;
+
+	ChunkModel(glm::vec3 position, Material* material, Texture* orTexDif, Texture* orTexSpc, std::vector<ChunkMesh*> meshesToTake, int minY, int maxY) {
+		this->position = position;
+		this->material = material;
+		this->overrideTextureDiffuse = orTexDif;
+		this->overrideTextureSpecular = orTexSpc;
+		this->minY = minY;
+		this->maxY = maxY;
 		this->meshes.reserve(meshesToTake.size());
 		for (ChunkMesh* rawMesh : meshesToTake) this->meshes.push_back(std::unique_ptr<ChunkMesh>(rawMesh));
 		for (auto& i : this->meshes) { i->move(this->position); i->setOrigin(this->position); }

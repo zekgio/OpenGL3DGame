@@ -20,6 +20,8 @@ enum class FaceDirection {
 struct MeshData {
 	std::vector<ChunkVertex> vertices;
 	std::vector<GLuint> indices;
+	int minY = 256;
+	int maxY = 0;
 };
 
 class Chunk
