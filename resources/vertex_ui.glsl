@@ -1,4 +1,5 @@
 #version 450
+
 layout (location = 0) in vec3 vertex_position;
 layout (location = 1) in vec3 vertex_color;
 layout (location = 2) in vec2 vertex_texcoord; 
@@ -9,15 +10,15 @@ out vec2 vs_texcoord;
 out vec3 vs_normal;
 
 uniform mat4 ModelMatrix;
-uniform vec2 uiOffset;
-uniform float aspectRatio; // To adapt ui to screen aspect ratio
+uniform float aspectRatio; 
 
 void main() {
     vs_color    = vertex_color;
     vs_texcoord = vertex_texcoord;
     vs_normal   = vertex_normal;
     
-    vec4 pos    = ModelMatrix * vec4(vertex_position, 1.0);
+    // ModelMatrix is responsible for "movement"
+    vec4 pos = ModelMatrix * vec4(vertex_position, 1.0);
     
-    gl_Position = vec4((pos.x + uiOffset.x) * aspectRatio, pos.y + uiOffset.y, pos.z, 1.0);
+    gl_Position = vec4(pos.x * aspectRatio, pos.y, pos.z, 1.0);
 }

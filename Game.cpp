@@ -46,6 +46,7 @@ void Game::initWindow(const char* title, bool resizable)
 	// Slight optimization in render calls: avg fps: 1777.3   avg ms: 0.563
 	// Removed setVec2f from chunkOffset:   avg fps: 2673.6   avg ms: 0.374
 	// Better frustum (fixed Bounding box): avg fps: 3037.4   avg ms: 0.329
+	// LOD, AZDO, DIB, VRAMA, light vertex: avg fps: 3350.9   avg ms: 0.298
 }
 
 void Game::initGLEW()
@@ -64,6 +65,7 @@ void Game::initOpenGLOptions()
 {
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
+	glEnable(GL_FRAMEBUFFER_SRGB);
 	glCullFace(GL_BACK);
 	glFrontFace(GL_CCW);
 	glEnable(GL_BLEND);
@@ -102,10 +104,6 @@ void Game::initShaders()
 
 void Game::initTextures()
 {
-	this->textures.push_back( std::make_unique<Texture>(Constants::Resources::CAT, GL_TEXTURE_2D) );
-	this->textures.push_back( std::make_unique<Texture>(Constants::Resources::CAT_SPECULAR, GL_TEXTURE_2D) );
-	this->textures.push_back( std::make_unique<Texture>(Constants::Resources::BOX, GL_TEXTURE_2D) );
-	this->textures.push_back( std::make_unique<Texture>(Constants::Resources::BOX_SPECULAR, GL_TEXTURE_2D) );
 	this->textures.push_back( std::make_unique<Texture>(Constants::Resources::ATLAS, 16, 16) );
 	this->textures.push_back( std::make_unique<Texture>(Constants::Resources::ATLAS_SPECULAR, 16, 16) );
 }
@@ -191,21 +189,21 @@ void Game::initModels()
 	// 1. Grass
 	tempChunk->setBlock(0, 0, 0, Constants::BlockType::GRASS);
 	MeshData grassData = tempChunk->buildMesh();
-	this->iconGrassMesh = std::make_unique<ChunkMesh>(grassData.vertices.data(), grassData.vertices.size(), grassData.indices.data(), grassData.indices.size());
+	this->iconGrassMesh = std::make_unique<StandaloneVoxelMesh>(grassData.vertices.data(), grassData.vertices.size(), grassData.indices.data(), grassData.indices.size());
 	this->iconGrassMesh->setRotation(glm::vec3(25.f, 45.f, 0.f));
 	this->iconGrassMesh->setScale(glm::vec3(0.06f));
 
 	// 2. Dirt
 	tempChunk->setBlock(0, 0, 0, Constants::BlockType::DIRT);
 	MeshData dirtData = tempChunk->buildMesh();
-	this->iconDirtMesh = std::make_unique<ChunkMesh>(dirtData.vertices.data(), dirtData.vertices.size(), dirtData.indices.data(), dirtData.indices.size());
+	this->iconDirtMesh = std::make_unique<StandaloneVoxelMesh>(dirtData.vertices.data(), dirtData.vertices.size(), dirtData.indices.data(), dirtData.indices.size());
 	this->iconDirtMesh->setRotation(glm::vec3(25.f, 45.f, 0.f));
 	this->iconDirtMesh->setScale(glm::vec3(0.06f));
 
 	// 3. Stone
 	tempChunk->setBlock(0, 0, 0, Constants::BlockType::STONE);
 	MeshData stoneData = tempChunk->buildMesh();
-	this->iconStoneMesh = std::make_unique<ChunkMesh>(stoneData.vertices.data(), stoneData.vertices.size(), stoneData.indices.data(), stoneData.indices.size());
+	this->iconStoneMesh = std::make_unique<StandaloneVoxelMesh>(stoneData.vertices.data(), stoneData.vertices.size(), stoneData.indices.data(), stoneData.indices.size());
 	this->iconStoneMesh->setRotation(glm::vec3(25.f, 45.f, 0.f));
 	this->iconStoneMesh->setScale(glm::vec3(0.06f));
 
@@ -216,7 +214,7 @@ void Game::initModels()
 	tempChunk->setBlock(0, 0, 0, Constants::BlockType::DIRT);
 
 	MeshData wireframeData = tempChunk->buildMesh();
-	this->selectionWireframe = std::make_unique<ChunkMesh>(wireframeData.vertices.data(), wireframeData.vertices.size(), wireframeData.indices.data(), wireframeData.indices.size());
+	this->selectionWireframe = std::make_unique<StandaloneVoxelMesh>(wireframeData.vertices.data(), wireframeData.vertices.size(), wireframeData.indices.data(), wireframeData.indices.size());
 	this->selectionWireframe->setScale(glm::vec3(1.01f));
 
 	delete tempChunk;
@@ -475,7 +473,41 @@ void Game::updateMouseInput()
 					// Place
 					uint8_t blockToPlace = this->hotbarBlocks[this->activeSlot];
 					if (blockToPlace != Constants::BlockType::AIR) {
-						this->world->setBlock(lastX, lastY, lastZ, blockToPlace);
+
+						// To avoid placing blocks on corners when looking diagonally
+						int diffX = std::abs(hitX - lastX);
+						int diffY = std::abs(hitY - lastY);
+						int diffZ = std::abs(hitZ - lastZ);
+
+						if ((diffX + diffY + diffZ) == 1)
+						{
+							// Compute bounds
+							float bMinX = lastX - 0.5f; float bMaxX = lastX + 0.5f;
+							float bMinY = lastY - 0.5f; float bMaxY = lastY + 0.5f;
+							float bMinZ = lastZ - 0.5f; float bMaxZ = lastZ + 0.5f;
+
+							// Compute player bounds
+							float pWidth = 0.6f;
+							float pHeight = 1.8f;
+
+							// this->player->position is equal to the center of the player's feet
+							float pMinX = this->player->position.x - (pWidth / 2.0f);
+							float pMaxX = this->player->position.x + (pWidth / 2.0f);
+							float pMinY = this->player->position.y;
+							float pMaxY = this->player->position.y + pHeight;
+							float pMinZ = this->player->position.z - (pWidth / 2.0f);
+							float pMaxZ = this->player->position.z + (pWidth / 2.0f);
+
+							// Checks overlapping
+							bool intersectX = (pMinX < bMaxX && pMaxX > bMinX);
+							bool intersectY = (pMinY < bMaxY && pMaxY > bMinY);
+							bool intersectZ = (pMinZ < bMaxZ && pMaxZ > bMinZ);
+
+							// If not colliding with player, place the block
+							if (!(intersectX && intersectY && intersectZ)) {
+								this->world->setBlock(lastX, lastY, lastZ, blockToPlace);
+							}
+						}
 					}
 				}
 			}
@@ -638,18 +670,18 @@ void Game::render()
 	this->shaders[Constants::GameEnums::ShaderEnum::SHADER_UI]->set1f(aspectRatio, "aspectRatio");
 	this->shaders[Constants::GameEnums::ShaderEnum::SHADER_UI]->set1i(0, "useTexture");
 
-	// Background and Selector
-	this->shaders[Constants::GameEnums::ShaderEnum::SHADER_UI]->setVec2f(glm::vec2(0.0f, 0.0f), "uiOffset");
+	// Hotbar
 	this->shaders[Constants::GameEnums::ShaderEnum::SHADER_UI]->set1f(0.5f, "uiAlpha");
 	this->gameMeshes[Constants::GameEnums::MeshEnum::HOTBAR_BG_MESH]->render(this->shaders[Constants::GameEnums::ShaderEnum::SHADER_UI].get());
 
-	float selectorXOffset = this->activeSlot * 0.1f;
-	this->shaders[Constants::GameEnums::ShaderEnum::SHADER_UI]->setVec2f(glm::vec2(selectorXOffset, 0.0f), "uiOffset");
+	// Selector
+	// Selector
+	float selectorXOffset = (float)this->activeSlot * 0.1f;
 	this->shaders[Constants::GameEnums::ShaderEnum::SHADER_UI]->set1f(0.8f, "uiAlpha");
+	this->gameMeshes[Constants::GameEnums::MeshEnum::HOTBAR_SELECTOR_MESH]->setPosition(glm::vec3(selectorXOffset, 0.0f, 0.0f));
 	this->gameMeshes[Constants::GameEnums::MeshEnum::HOTBAR_SELECTOR_MESH]->render(this->shaders[Constants::GameEnums::ShaderEnum::SHADER_UI].get());
 
 	// Crosshair
-	this->shaders[Constants::GameEnums::ShaderEnum::SHADER_UI]->setVec2f(glm::vec2(0.0f, 0.0f), "uiOffset");
 	this->shaders[Constants::GameEnums::ShaderEnum::SHADER_UI]->set1f(1.0f, "uiAlpha");
 	this->gameMeshes[Constants::GameEnums::MeshEnum::CROSSHAIR_MESH]->render(this->shaders[Constants::GameEnums::ShaderEnum::SHADER_UI].get());
 

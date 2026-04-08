@@ -18,7 +18,6 @@ include(${CMAKE_CURRENT_BINARY_DIR}/cmake/CPM.cmake)
 # --- 2. CONFIGURATION ---
 set(LIBS)
 
-
 # --- 3. DEPENDENCIES ---
 
 # --- GLFW ---
@@ -110,3 +109,23 @@ add_custom_target(CopyImages
     "$<TARGET_FILE_DIR:OpenGL3DGame>/images/"
 )
 add_dependencies(OpenGL3DGame CopyImages)
+
+if(MSVC)
+    # Force PDB generation
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /Zi")
+    set(CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} /DEBUG /OPT:REF /OPT:ICF")
+endif()
+
+if(MSVC)
+    target_compile_options(OpenGL3DGame PRIVATE
+        /O2
+        /fp:fast
+        /arch:AVX2
+    )
+else()
+    target_compile_options(OpenGL3DGame PRIVATE
+        -O3
+        -ffast-math
+        -mavx2
+    )
+endif()

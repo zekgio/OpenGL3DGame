@@ -11,9 +11,11 @@ Project to learn OpenGL, written in c++ rendered with OpenGL libraries
 
 ## Controls
 - [W,A,S,D] to move
-- [SHIFT] to move down
-- [SPACE] to move up
-- [ESC] to close
+- [CTRL] to run
+- [SPACE] to jump
+- [LEFT CLICK] to break block
+- [RIGHT CLICK] to place block
+- [1,2...9] to select block type
 
 ## Build & Run
 
@@ -31,4 +33,4 @@ cmake --build --preset x64-debug
 ```
 
 ### Credits
-- Images from Google Images
+- Inspired by Minecraft

@@ -18,13 +18,9 @@ namespace Constants {
 
 		namespace TextureEnum
         {
-            const int TEX_CAT = 0;
-            const int TEX_CAT_SPECULAR = 1;
-            const int TEX_BOX = 2;
-            const int TEX_BOX_SPECULAR = 3;
-            const int TEX_ATLAS = 4;
-            const int TEX_ATLAS_SPECULAR = 5;
-			const int COUNT_TEXTURES = 6;
+            const int TEX_ATLAS = 0;
+            const int TEX_ATLAS_SPECULAR = 1;
+			const int COUNT_TEXTURES = 2;
         }
 
 		namespace MaterialEnum
@@ -48,11 +44,7 @@ namespace Constants {
 	// Resources
     namespace Resources
     {
-		const std::string CAT = "images/cat.jpg";
-        const std::string CAT_SPECULAR = "images/cat_specular.jpg";
-        const std::string BOX = "images/box.png";
-        const std::string BOX_SPECULAR = "images/box_specular.png";
-        const std::string ATLAS = "images/atlas.jpg";
+        const std::string ATLAS = "images/atlas.png";
         const std::string ATLAS_SPECULAR = "images/atlas_specular.jpg";
     }
 
@@ -114,7 +106,8 @@ namespace Constants {
 		const float CONT_NOISE_FREQUENCY    = 0.007f;
         const float CAVE_NOISE_FREQUENCY    = 0.04f;
         const float NORMALIZATION_EXPONENT  = 0.1f;
-        const int DEFAULT_RENDER_DISTANCE = 100;
+        const int DEFAULT_RENDER_DISTANCE = 4;
+        const int LOD_DISTANCE = 40;
     }
 
     // Player
@@ -123,5 +116,13 @@ namespace Constants {
         const float RUNNING_SPEED = 52.0f;
     }
 }
+
+struct DrawElementsIndirectCommand {
+    GLuint count;         // Number of indices
+    GLuint instanceCount; // 1
+	GLuint firstIndex;    // Global EBO offset (in number of indices, not in byte)
+	GLuint baseVertex;    // Global VBO offset (in number of vertices, not in byte)
+    GLuint baseInstance;  // 0
+};
 
 #endif

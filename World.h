@@ -10,11 +10,12 @@
 #include <mutex>
 #include <queue>
 #include <condition_variable>
+#include <unordered_set>
 
 // Custom hash function since glm::ivec2 doesn't have a built-in hash
 struct ivec2Hash {
 	std::size_t operator()(const glm::ivec2& v) const {
-		return std::hash<int>()(v.x) ^ (std::hash<int>()(v.y) << 1);
+		return (static_cast<size_t>(v.x) * 604171) ^ (static_cast<size_t>(v.y) * 971767);
 	}
 };
 
@@ -23,6 +24,21 @@ struct ChunkResult {
 	glm::ivec2 pos;
 	std::unique_ptr<Chunk> chunk;
 	MeshData meshData;
+};
+
+struct FreeBlock {
+	size_t offset;
+	size_t size;
+};
+
+// Struct for Macro-Regions
+struct Region {
+	glm::vec3 minP;
+	glm::vec3 maxP;
+	std::unordered_set<glm::ivec2, ivec2Hash> activeChunks;
+
+	Region() = default;
+	Region(glm::vec3 min, glm::vec3 max) : minP(min), maxP(max) {}
 };
 
 // Struct for frustum culling, containing the 6 planes of the view frustum
@@ -63,8 +79,63 @@ struct ViewFrustum {
 	}
 };
 
+class VRAMAllocator {
+private:
+	size_t capacity;
+	size_t currentOffset = 0;
+	std::vector<FreeBlock> freeList;
+
+public:
+	VRAMAllocator(size_t maxCapacity) : capacity(maxCapacity) {}
+
+	size_t allocate(size_t size) {
+		// 1. Search Empty Slot (First-Fit)
+		for (size_t i = 0; i < freeList.size(); ++i) {
+			if (freeList[i].size >= size) {
+				size_t allocatedOffset = freeList[i].offset;
+
+				if (freeList[i].size == size) {
+					freeList[i] = freeList.back();
+					freeList.pop_back();
+				}
+				else {
+					freeList[i].offset += size;
+					freeList[i].size -= size;
+				}
+				return allocatedOffset;
+			}
+		}
+
+		// 2. If no slot found, allocate at the end if possible
+		if (currentOffset + size <= capacity) {
+			size_t allocatedOffset = currentOffset;
+			currentOffset += size;
+			return allocatedOffset;
+		}
+
+		std::cout << "CRITICAL ERROR: VRAM Overflow!" << std::endl;
+		return 0;
+	}
+
+	void free(size_t offset, size_t size) {
+		if (size > 0) {
+			freeList.push_back({ offset, size });
+		}
+	}
+};
+
 class World {
 private:
+	// AZDO Global Buffers
+	GLuint globalVAO;
+	GLuint globalVBO;
+	GLuint globalEBO;
+	GLuint globalDIB;
+	std::vector<DrawElementsIndirectCommand> indirectCommands;
+
+	VRAMAllocator vertexAllocator;
+	VRAMAllocator indexAllocator;
+
 	int lastPlayerChunkX = -999999;
 	int lastPlayerChunkZ = -999999;
 
@@ -72,13 +143,18 @@ private:
 	std::unordered_map<glm::ivec2, std::unique_ptr<Chunk>, ivec2Hash> chunks;
 	std::unordered_map<glm::ivec2, std::unique_ptr<ChunkModel>, ivec2Hash> chunkModels;
 
+	// Regions for more efficient frustum culling and chunk management (each region contains a fixed number of chunks, e.g. 16x16)
+	std::unordered_map<glm::ivec2, Region, ivec2Hash> regions;
+	const int REGION_SIZE = 16;
+
 	// Multithreading members
-	std::queue<glm::ivec2> loadQueue;
+	std::queue<std::pair<glm::ivec2, bool>> loadQueue;
 	std::queue<ChunkResult> readyQueue;
 	std::mutex queueMutex;
 	std::condition_variable cv;
 	bool isRunning = true;
-	std::thread workerThread;
+	std::vector<std::thread> workerThreads;
+	size_t dibCapacity = 0;
 
 	// Pointers to resources for generating new chunk Models (only reference, resources owned by Game.h, no need to delete)
 	Material* terrainMaterial;

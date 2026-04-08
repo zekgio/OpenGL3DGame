@@ -46,21 +46,20 @@ void main()
 
     // Reconstruct UV coordinates
     vec3 maskU[6] = vec3[](
-        vec3(1, 0, 0), // FRONT
-        vec3(1, 0, 0), // BACK
-        vec3(0, 0, 1), // LEFT
-        vec3(0, 0, 1), // RIGHT
-        vec3(1, 0, 0), // TOP
-        vec3(1, 0, 0)  // BOTTOM
+        vec3(1, 0, 0),
+        vec3(1, 0, 0),
+        vec3(0, 0, 1),
+        vec3(0, 0, 1),
+        vec3(1, 0, 0),
+        vec3(1, 0, 0)
     );
-    
     vec3 maskV[6] = vec3[](
-        vec3(0, -1, 0), // FRONT
-        vec3(0, -1, 0), // BACK
-        vec3(0, -1, 0), // LEFT
-        vec3(0, -1, 0), // RIGHT
-        vec3(0, 0, 1),  // TOP
-        vec3(0, 0, 1)   // BOTTOM
+        vec3(0, -1, 0),
+        vec3(0, -1, 0),
+        vec3(0, -1, 0),
+        vec3(0, -1, 0),
+        vec3(0, 0, 1),
+        vec3(0, 0, 1)
     );
 
     vec2 generatedUV = vec2(dot(rawPos, maskU[norm]), dot(rawPos, maskV[norm]));

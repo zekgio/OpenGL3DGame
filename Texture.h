@@ -83,7 +83,7 @@ public:
 		glTexParameteri(this->type, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
 
 		// Load data as 3D texture
-		glTexImage3D(this->type, 0, GL_RGBA, tileWidth, tileHeight, layerCount, 0, GL_RGBA, GL_UNSIGNED_BYTE, arrayData);
+		glTexImage3D(this->type, 0, GL_SRGB8_ALPHA8, tileWidth, tileHeight, layerCount, 0, GL_RGBA, GL_UNSIGNED_BYTE, arrayData);
 		glGenerateMipmap(this->type);
 
 		delete[] arrayData;

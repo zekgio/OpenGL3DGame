@@ -31,6 +31,7 @@ public:
 	const int chunkX, chunkZ;
 	const int worldOffsetX, worldOffsetZ;
 	std::vector<uint8_t> blocks;
+	bool isLOD = false;
 
 	Chunk(int x, int z);
 
@@ -51,4 +52,5 @@ public:
 	int getTextureIndex(uint8_t type, FaceDirection face);
 
 	MeshData buildMesh();
+	MeshData buildLODMesh();
 };

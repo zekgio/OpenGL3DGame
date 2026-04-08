@@ -1,6 +1,4 @@
-﻿// OpenGL3DGame.h: file di inclusione per file di inclusione di sistema standard,
-// o file di inclusione specifici del progetto.
-
+﻿// Include commonly used external libraries (not own to avoid circular dependency)
 #pragma once
 
 #include <iostream>

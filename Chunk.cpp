@@ -12,7 +12,7 @@ Chunk::Chunk(int x, int z) : chunkX(x), chunkZ(z), worldOffsetX(x*CHUNK_WIDTH), 
 	FastNoiseLite terrainNoise;
 	terrainNoise.SetNoiseType(FastNoiseLite::NoiseType_Perlin);
 	terrainNoise.SetFractalType(FastNoiseLite::FractalType_FBm); // Adding octaves for more detail
-	terrainNoise.SetFractalOctaves(4);
+	terrainNoise.SetFractalOctaves(2);
 	// Low frequency for hills
 	terrainNoise.SetFrequency(Constants::World::TERRAIN_NOISE_FREQUENCY);
 	terrainNoise.SetSeed(Chunk::worldSeed);
@@ -111,6 +111,7 @@ int Chunk::getTextureIndex(uint8_t type, FaceDirection face) {
 
 MeshData Chunk::buildMesh() // Implementing the Greedy Meshing algorithm
 {
+	this->isLOD = false;
 	MeshData meshData;
 
 	meshData.vertices.reserve(1800);
@@ -233,10 +234,10 @@ MeshData Chunk::buildMesh() // Implementing the Greedy Meshing algorithm
 							texID = 3;
 
 						// 4 angles
-						ChunkVertex v0 = ChunkVertex::pack(x[0], x[1], x[2], texID, norm, this->chunkX, this->chunkZ);
-						ChunkVertex v1 = ChunkVertex::pack(x[0] + du[0], x[1] + du[1], x[2] + du[2], texID, norm, this->chunkX, this->chunkZ);
-						ChunkVertex v2 = ChunkVertex::pack(x[0] + du[0] + dv[0], x[1] + du[1] + dv[1], x[2] + du[2] + dv[2], texID, norm, this->chunkX, this->chunkZ);
-						ChunkVertex v3 = ChunkVertex::pack(x[0] + dv[0], x[1] + dv[1], x[2] + dv[2], texID, norm, this->chunkX, this->chunkZ);
+						ChunkVertex v0 = ChunkVertex::pack(this->chunkX, this->chunkZ, x[0], x[1], x[2], texID, norm);
+						ChunkVertex v1 = ChunkVertex::pack(this->chunkX, this->chunkZ, x[0] + du[0], x[1] + du[1], x[2] + du[2], texID, norm);
+						ChunkVertex v2 = ChunkVertex::pack(this->chunkX, this->chunkZ, x[0] + du[0] + dv[0], x[1] + du[1] + dv[1], x[2] + du[2] + dv[2], texID, norm);
+						ChunkVertex v3 = ChunkVertex::pack(this->chunkX, this->chunkZ, x[0] + dv[0], x[1] + dv[1], x[2] + dv[2], texID, norm);
 
 						uint32_t offset = meshData.vertices.size();
 
@@ -249,7 +250,6 @@ MeshData Chunk::buildMesh() // Implementing the Greedy Meshing algorithm
 							meshData.vertices.emplace_back(v0); meshData.vertices.emplace_back(v3);
 							meshData.vertices.emplace_back(v2); meshData.vertices.emplace_back(v1);
 						}
-
 						meshData.indices.push_back(offset + 0); meshData.indices.push_back(offset + 1); meshData.indices.push_back(offset + 2);
 						meshData.indices.push_back(offset + 2); meshData.indices.push_back(offset + 3); meshData.indices.push_back(offset + 0);
 
@@ -282,6 +282,79 @@ MeshData Chunk::buildMesh() // Implementing the Greedy Meshing algorithm
 			if (y < meshData.minY) meshData.minY = y;
 			if (y > meshData.maxY) meshData.maxY = y;
 		}
+		meshData.maxY += 1;
+	}
+
+	return meshData;
+}
+
+MeshData Chunk::buildLODMesh()
+{
+	this->isLOD = true;
+	MeshData meshData;
+
+	// Up to 16x16 = 256 faces
+	meshData.vertices.reserve(1024);
+	meshData.indices.reserve(1536);
+	meshData.minY = 256;
+	meshData.maxY = 0;
+
+	for (int x = 0; x < Constants::World::CHUNK_WIDTH; ++x) {
+		for (int z = 0; z < Constants::World::CHUNK_DEPTH; ++z) {
+
+			// Find the topmost solid block
+			int topY = -1;
+			uint8_t topType = Constants::BlockType::AIR;
+
+			for (int y = Constants::World::CHUNK_HEIGHT - 1; y >= 0; --y) {
+				uint8_t b = getBlock(x, y, z);
+				if (b != Constants::BlockType::AIR) {
+					topY = y;
+					topType = b;
+					break;
+				}
+			}
+
+			// If terrain is found, create a single quad for the top face
+			if (topY != -1) {
+				uint32_t texID = 0;
+				if (topType == Constants::BlockType::DIRT) texID = 2;
+				else if (topType == Constants::BlockType::STONE) texID = 3;
+
+				uint32_t norm = 4; // Top face normal
+
+				// Quad vertices
+				ChunkVertex v0 = ChunkVertex::pack(this->chunkX, this->chunkZ, x, topY + 1, z, texID, norm);
+				ChunkVertex v1 = ChunkVertex::pack(this->chunkX, this->chunkZ, x + 1, topY + 1, z, texID, norm);
+				ChunkVertex v2 = ChunkVertex::pack(this->chunkX, this->chunkZ, x + 1, topY + 1, z + 1, texID, norm);
+				ChunkVertex v3 = ChunkVertex::pack(this->chunkX, this->chunkZ, x, topY + 1, z + 1, texID, norm);
+
+				uint32_t offset = meshData.vertices.size();
+
+				// Winding order for face culling (CCW)
+				meshData.vertices.push_back(v0);
+				meshData.vertices.push_back(v3);
+				meshData.vertices.push_back(v2);
+				meshData.vertices.push_back(v1);
+
+				meshData.indices.push_back(offset + 0);
+				meshData.indices.push_back(offset + 1);
+				meshData.indices.push_back(offset + 2);
+				meshData.indices.push_back(offset + 2);
+				meshData.indices.push_back(offset + 3);
+				meshData.indices.push_back(offset + 0);
+
+				if (topY < meshData.minY) meshData.minY = topY;
+				if (topY > meshData.maxY) meshData.maxY = topY;
+			}
+		}
+	}
+
+	if (meshData.vertices.empty()) {
+		meshData.minY = 0;
+		meshData.maxY = 0;
+	}
+	else {
 		meshData.maxY += 1;
 	}
 

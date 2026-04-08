@@ -97,8 +97,8 @@ public:
 	{
 		// Update uniforms -> Bind -> Render
 		this->updateModelMatrix();
-		this->updateUniforms(shader);
 		shader->use();
+		this->updateUniforms(shader);
 
 		glBindVertexArray(this->VAO);
 
@@ -181,109 +181,76 @@ private:
 
 };
 
-// CHUNK MESH (Compressed, No Rotation/Scale) Exclusive for Voxel
+// CHUNK MESH (Compressed, No Rotation/Scale) Includes only necessary info for AZDO rendering
 class ChunkMesh
 {
 public:
-	ChunkMesh(ChunkVertex* vertexArray, const unsigned& nrOfVertices,
-		GLuint* indexArray, const unsigned& nrOfIndices,
-		glm::vec3 position = glm::vec3(0.f),
-		glm::vec3 origin = glm::vec3(0.f),
-		glm::vec3 rotation = glm::vec3(0.f),
-		glm::vec3 scale = glm::vec3(1.f))
-		: position(position), origin(origin), rotation(rotation), Scale(scale)
-	{
-		this->vertices.assign(vertexArray, vertexArray + nrOfVertices);
-		this->indices.assign(indexArray, indexArray + nrOfIndices);
-		this->initVAO();
-		this->updateModelMatrix();
-	}
+	GLuint baseVertex = 0;
+	GLuint firstIndex = 0;
+	GLuint indexCount = 0;
+	GLuint vertexCount = 0;
 
-	ChunkMesh(std::vector<ChunkVertex> vert, std::vector<GLuint> indi,
-		glm::vec3 position = glm::vec3(0.f),
-		glm::vec3 origin = glm::vec3(0.f),
-		glm::vec3 rotation = glm::vec3(0.f),
-		glm::vec3 scale = glm::vec3(1.f))
-		: position(position), origin(origin), rotation(rotation), Scale(scale)
-	{
-		this->vertices = std::move(vert);
-		this->indices = std::move(indi);
-		this->initVAO();
-		this->updateModelMatrix();
-	}
+	ChunkMesh() = default;
+	~ChunkMesh() = default;
+};
 
-	~ChunkMesh()
-	{
-		glDeleteVertexArrays(1, &this->VAO);
-		glDeleteBuffers(1, &this->VBO);
-		if (!this->indices.empty()) glDeleteBuffers(1, &this->EBO);
-	}
-
-	void setPosition(const glm::vec3 position) { this->position = position; }
-	void setOrigin(const glm::vec3 origin) { this->origin = origin; }
-	void setRotation(const glm::vec3 rotation) { this->rotation = rotation; }
-	void setScale(const glm::vec3 scale) { this->Scale = scale; }
-
-	void move(const glm::vec3 position) { this->position += position; }
-	void rotate(const glm::vec3 rotation) { this->rotation += rotation; }
-
-	void render(Shader* shader)
-	{
-		this->updateModelMatrix();
-		shader->setMat4fv(this->ModelMatrix, "ModelMatrix");
-		shader->use();
-
-		glBindVertexArray(this->VAO);
-		if (this->indices.empty()) glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(this->vertices.size()));
-		else glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(this->indices.size()), GL_UNSIGNED_INT, 0);
-
-		glBindVertexArray(0);
-	}
-
-	void renderFast(Shader* shader) {
-		if (this->vertices.empty()) return;
-		glBindVertexArray(this->VAO);
-		glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(this->indices.size()), GL_UNSIGNED_INT, 0);
-	}
-
+// Independent Mesh for Icons and Standalone Blocks (e.g. Selection Wireframe)
+class StandaloneVoxelMesh
+{
 private:
-	std::vector<ChunkVertex> vertices;
-	std::vector<GLuint> indices;
 	GLuint VAO, VBO, EBO;
-	glm::vec3 position, rotation, Scale, origin;
+	size_t indexCount;
+	glm::vec3 position, rotation, scaleVec;
 	glm::mat4 ModelMatrix;
 
-	void initVAO()
+	void updateModelMatrix() {
+		this->ModelMatrix = glm::mat4(1.f);
+		this->ModelMatrix = glm::translate(this->ModelMatrix, this->position);
+		this->ModelMatrix = glm::rotate(this->ModelMatrix, glm::radians(this->rotation.x), glm::vec3(1.f, 0.f, 0.f));
+		this->ModelMatrix = glm::rotate(this->ModelMatrix, glm::radians(this->rotation.y), glm::vec3(0.f, 1.f, 0.f));
+		this->ModelMatrix = glm::rotate(this->ModelMatrix, glm::radians(this->rotation.z), glm::vec3(0.f, 0.f, 1.f));
+		this->ModelMatrix = glm::scale(this->ModelMatrix, this->scaleVec);
+	}
+
+public:
+	StandaloneVoxelMesh(ChunkVertex* vertexArray, size_t nrOfVertices, GLuint* indexArray, size_t nrOfIndices)
+		: position(0.f), rotation(0.f), scaleVec(1.f)
 	{
+		this->indexCount = nrOfIndices;
 		glCreateVertexArrays(1, &this->VAO);
 		glBindVertexArray(this->VAO);
 
 		glGenBuffers(1, &this->VBO);
 		glBindBuffer(GL_ARRAY_BUFFER, this->VBO);
-		glBufferData(GL_ARRAY_BUFFER, this->vertices.size() * sizeof(ChunkVertex), this->vertices.data(), GL_STATIC_DRAW);
-
-		if (!this->indices.empty()) {
-			glGenBuffers(1, &this->EBO);
-			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->EBO);
-			glBufferData(GL_ELEMENT_ARRAY_BUFFER, this->indices.size() * sizeof(GLuint), this->indices.data(), GL_STATIC_DRAW);
-		}
+		glBufferData(GL_ARRAY_BUFFER, nrOfVertices * sizeof(ChunkVertex), vertexArray, GL_STATIC_DRAW);
 
 		glVertexAttribIPointer(0, 1, GL_UNSIGNED_INT, sizeof(ChunkVertex), (void*)offsetof(ChunkVertex, data));
 		glEnableVertexAttribArray(0);
 		glVertexAttribIPointer(1, 2, GL_SHORT, sizeof(ChunkVertex), (void*)offsetof(ChunkVertex, chunkX));
 		glEnableVertexAttribArray(1);
 
+		glGenBuffers(1, &this->EBO);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->EBO);
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, nrOfIndices * sizeof(GLuint), indexArray, GL_STATIC_DRAW);
+
 		glBindVertexArray(0);
+		this->updateModelMatrix();
 	}
 
-	void updateModelMatrix()
-	{
-		this->ModelMatrix = glm::mat4(1.f);
-		this->ModelMatrix = glm::translate(this->ModelMatrix, this->origin);
-		this->ModelMatrix = glm::rotate(this->ModelMatrix, glm::radians(this->rotation.x), glm::vec3(1.f, 0.f, 0.f));
-		this->ModelMatrix = glm::rotate(this->ModelMatrix, glm::radians(this->rotation.y), glm::vec3(0.f, 1.f, 0.f));
-		this->ModelMatrix = glm::rotate(this->ModelMatrix, glm::radians(this->rotation.z), glm::vec3(0.f, 0.f, 1.f));
-		this->ModelMatrix = glm::translate(this->ModelMatrix, this->position - this->origin);
-		this->ModelMatrix = glm::scale(this->ModelMatrix, glm::vec3(this->Scale));
+	~StandaloneVoxelMesh() {
+		glDeleteVertexArrays(1, &this->VAO);
+		glDeleteBuffers(1, &this->VBO);
+		glDeleteBuffers(1, &this->EBO);
+	}
+
+	void setPosition(glm::vec3 pos) { this->position = pos; this->updateModelMatrix(); }
+	void setRotation(glm::vec3 rot) { this->rotation = rot; this->updateModelMatrix(); }
+	void setScale(glm::vec3 sc) { this->scaleVec = sc; this->updateModelMatrix(); }
+
+	void render(Shader* shader) {
+		shader->setMat4fv(this->ModelMatrix, "ModelMatrix");
+		glBindVertexArray(this->VAO);
+		glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(this->indexCount), GL_UNSIGNED_INT, 0);
+		glBindVertexArray(0);
 	}
 };

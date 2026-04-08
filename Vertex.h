@@ -14,11 +14,7 @@ struct ChunkVertex {
 	int16_t chunkX;
 	int16_t chunkZ;
 
-	ChunkVertex(uint32_t packedData) : data(packedData) {}
-	ChunkVertex() {}
-
-	// Compress values in single uint32_t
-	static ChunkVertex pack(uint32_t x, uint32_t y, uint32_t z, uint32_t tex, uint32_t norm, int cX, int cZ) {
+	static ChunkVertex pack(int cX, int cZ, uint32_t x, uint32_t y, uint32_t z, uint32_t tex, uint32_t norm) {
 		ChunkVertex v;
 		v.chunkX = static_cast<int16_t>(cX);
 		v.chunkZ = static_cast<int16_t>(cZ);

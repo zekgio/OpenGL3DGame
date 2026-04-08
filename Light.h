@@ -9,15 +9,9 @@ protected:
 	float intensity;
 
 public:
-	Light(float intensity, glm::vec3 color) : intensity(intensity), color(color)
-	{
+	Light(float intensity, glm::vec3 color) : intensity(intensity), color(color) {}
 
-	}
-
-	virtual ~Light()
-	{
-
-	}
+	virtual ~Light() {}
 
 	// Functions
 	virtual void sendToShader(Shader& program) = 0;
@@ -31,9 +25,7 @@ protected:
 
 public:
 	DirectionalLight(glm::vec3 direction, float intensity = 1.f, glm::vec3 color = glm::vec3(1.f))
-		: Light(intensity, color), direction(direction)
-	{
-	}
+		: Light(intensity, color), direction(direction) {}
 
 	~DirectionalLight() {}
 
@@ -62,15 +54,9 @@ public:
 	PointLight(glm::vec3 position, float intensity = 1.f, glm::vec3 color = glm::vec3(1.f),
 		float constant = 1.f, float linear = 0.045f, float quadratic = 0.0075f)
 		: Light(intensity, color), position(position), constant(constant),
-		linear(linear), quadratic(quadratic)
-	{
+		linear(linear), quadratic(quadratic) {}
 
-	}
-
-	~PointLight()
-	{
-
-	}
+	~PointLight() {}
 
 	void sendToShader(Shader& program)
 	{

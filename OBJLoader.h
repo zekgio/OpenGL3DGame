@@ -12,7 +12,7 @@
 #include "Model.h"
 
 struct LoadingMeshData {
-	std::string name; // Nome del materiale (es. "Glass")
+	std::string name; // Material Name (eg. "Glass")
 	std::vector<GLint> pos_indices;
 	std::vector<GLint> tex_indices;
 	std::vector<GLint> nor_indices;
@@ -124,7 +124,7 @@ public:
 				std::string matName;
 				ss >> matName;
 
-				// Cerca se esiste già un gruppo per questo materiale
+				// Searches if a group with this material name already exists
 				bool found = false;
 				for (auto& group : meshGroups) {
 					if (group.name == matName) {
@@ -134,12 +134,12 @@ public:
 					}
 				}
 
-				// Se non esiste, crealo
+				// If not, create
 				if (!found) {
 					LoadingMeshData newGroup;
 					newGroup.name = matName;
 					meshGroups.push_back(newGroup);
-					currentGroup = &meshGroups.back(); // Punta all'ultimo elemento inserito
+					currentGroup = &meshGroups.back(); // Points to last element, which is the new group
 				}
 			}
 			else if (prefix == "v") // Vertex Positions

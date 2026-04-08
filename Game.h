@@ -13,6 +13,14 @@
 #include "Player.h"
 #include "World.h"
 
+// TODO:
+// Fixes:
+// - Clear Game.h/Game.cpp code organization (maybe split into multiple files?)
+// Add:
+// - Debug mode (like F3 in Minecraft)
+// - Main menu
+// - pause menu
+
 // Structs
 struct WindowDeleter {
 	void operator()(GLFWwindow* window) const {
@@ -55,10 +63,10 @@ private:
 	std::vector<std::unique_ptr<Shader>> shaders;
 	std::vector<std::unique_ptr<Texture>> textures;
 	std::vector<std::unique_ptr<Mesh>> gameMeshes;
-	std::unique_ptr<ChunkMesh> selectionWireframe;
-	std::unique_ptr<ChunkMesh> iconGrassMesh;
-	std::unique_ptr<ChunkMesh> iconDirtMesh;
-	std::unique_ptr<ChunkMesh> iconStoneMesh;
+	std::unique_ptr<StandaloneVoxelMesh> iconGrassMesh;
+	std::unique_ptr<StandaloneVoxelMesh> iconDirtMesh;
+	std::unique_ptr<StandaloneVoxelMesh> iconStoneMesh;
+	std::unique_ptr<StandaloneVoxelMesh> selectionWireframe;
 	std::vector<std::unique_ptr<Material>> materials;
 	std::vector<std::unique_ptr<PointLight>> pointLights;
 	std::vector<std::unique_ptr<DirectionalLight>> dirLights;

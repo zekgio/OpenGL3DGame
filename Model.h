@@ -65,9 +65,7 @@ public:
 	void rotate(const glm::vec3 rotation)
 	{
 		for (auto& i : this->meshes)
-		{
 			i->rotate(rotation);
-		}
 	}
 
 	void update() {}
@@ -117,42 +115,17 @@ public:
 
 class ChunkModel
 {
-private:
-	Material* material;
-	Texture* overrideTextureDiffuse;
-	Texture* overrideTextureSpecular;
+public: // Public for easy access from World
+	int minY, maxY;
 	std::vector<std::unique_ptr<ChunkMesh>> meshes;
 	glm::vec3 position;
 
-public:
-	int minY, maxY;
-
-	ChunkModel(glm::vec3 position, Material* material, Texture* orTexDif, Texture* orTexSpc, std::vector<ChunkMesh*> meshesToTake, int minY, int maxY) {
+	ChunkModel(glm::vec3 position, std::vector<ChunkMesh*> meshesToTake, int minY, int maxY) {
 		this->position = position;
-		this->material = material;
-		this->overrideTextureDiffuse = orTexDif;
-		this->overrideTextureSpecular = orTexSpc;
 		this->minY = minY;
 		this->maxY = maxY;
 		this->meshes.reserve(meshesToTake.size());
 		for (ChunkMesh* rawMesh : meshesToTake) this->meshes.push_back(std::unique_ptr<ChunkMesh>(rawMesh));
-		for (auto& i : this->meshes) { i->move(this->position); i->setOrigin(this->position); }
 	}
-
 	~ChunkModel() {}
-
-	void render(Shader* shader) {
-		this->material->sendToShader(*shader);
-		shader->use();
-		for (auto& i : this->meshes) {
-			this->overrideTextureDiffuse->bind(0); this->overrideTextureSpecular->bind(1);
-			i->render(shader);
-		}
-	}
-
-	void renderFast(Shader* shader) {
-		for (auto& i : this->meshes) {
-			i->renderFast(shader);
-		}
-	}
 };

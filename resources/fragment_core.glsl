@@ -41,20 +41,17 @@ void main()
     vec3 norm = normalize(vs_normal);
     
     // 2. Ambient (Hemisphere)
-    float skyFactor = (norm.y + 1.0) * 0.4; 
-    vec3 skyColor = vec3(0.3f, 0.55f, 0.78f);  
-    vec3 groundColor = vec3(0.32, 0.15, 0.06); 
+    float skyFactor = (norm.y + 1.0) * 0.4;
+    vec3 skyColor = vec3(0.3f, 0.55f, 0.78f);
+    vec3 groundColor = vec3(0.32, 0.15, 0.06);
     vec3 ambient = mix(groundColor, skyColor, skyFactor) * 0.2;
     
     // 3. Direct Light
     vec3 directLighting = CalcDirLight(dirLight, norm);
     
     // 4. Sum and Base Color
-    vec3 lighting = (ambient + directLighting) * 0.9 + vec3(0.1); // Vec3(0.1) To avoid total darkness
+    vec3 lighting = (ambient + directLighting) * 0.95 + vec3(0.05); // Vec3(0.1) To avoid total darkness
     vec3 finalColor = texColor.rgb * lighting;
-
-    // 5. Gamma Correction
-    finalColor = pow(finalColor, vec3(1.0 / 2.2));
     
     fs_color = vec4(finalColor, 1.0);
 }
