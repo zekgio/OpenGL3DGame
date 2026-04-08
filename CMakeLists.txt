@@ -80,6 +80,10 @@ add_executable(OpenGL3DGame
     "Player.h"
     "World.h"
     "World.cpp"
+    "InputHandler.h"
+    "InputHandler.cpp"
+    "UIRenderer.h"
+    "UIRenderer.cpp"
 )
 
 target_include_directories(OpenGL3DGame PRIVATE

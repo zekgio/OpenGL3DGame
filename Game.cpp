@@ -118,7 +118,6 @@ void Game::initMaterials()
 
 void Game::initModels()
 { 
-	// Initialize (for now only one) chunk
 	int myWorldSeed = static_cast<int>(std::time(nullptr));
 	Chunk::worldSeed = myWorldSeed;
 	this->world = std::make_unique<World>(
@@ -126,98 +125,12 @@ void Game::initModels()
 		this->textures[Constants::GameEnums::TextureEnum::TEX_ATLAS].get(),
 		this->textures[Constants::GameEnums::TextureEnum::TEX_ATLAS_SPECULAR].get()
 	);
-
-	// MESHES INITIALIZATION
-	this->gameMeshes.resize(Constants::GameEnums::MeshEnum::COUNT_MESHES);
-
-	// MARKER INITIALIZATION
-	float size = 0.03f;       // Arm length
-	float thickness = 0.002f; // Arm Width
-	glm::vec3 white(1.0f);
-	glm::vec3 n(0, 0, 1);     // Fictitious normal 
-	glm::vec2 t(0, 0);        // Fictitious UV 
-
-	Vertex v[] = {
-		// Horizontal Bar
-		{glm::vec3(-size, -thickness, 0.f), white, t, n},
-		{glm::vec3(size, -thickness, 0.f), white, t, n},
-		{glm::vec3(size,  thickness, 0.f), white, t, n},
-		{glm::vec3(-size,  thickness, 0.f), white, t, n},
-
-		// Vertical Bar
-		{glm::vec3(-thickness, -size, 0.f), white, t, n},
-		{glm::vec3(thickness, -size, 0.f), white, t, n},
-		{glm::vec3(thickness,  size, 0.f), white, t, n},
-		{glm::vec3(-thickness,  size, 0.f), white, t, n}
-	};
-
-	GLuint indices[] = {
-		0, 1, 2, 2, 3, 0, // Horizontal Rectangle
-		4, 5, 6, 6, 7, 4  // Verticale Rectangle
-	};
-	this->gameMeshes[Constants::GameEnums::MeshEnum::CROSSHAIR_MESH] = std::make_unique<Mesh>(v, 8, indices, 12);
-
-	// HOTBAR
-	glm::vec3 darkGray(0.2f, 0.2f, 0.2f);
-
-	// 1. Hotbar Background
-	Vertex bgVerts[] = {
-		{glm::vec3(-0.45f, -0.95f, 0.f), darkGray, t, n},
-		{glm::vec3( 0.45f, -0.95f, 0.f), darkGray, t, n},
-		{glm::vec3( 0.45f, -0.85f, 0.f), darkGray, t, n},
-		{glm::vec3(-0.45f, -0.85f, 0.f), darkGray, t, n}
-	};
-	GLuint quadIndices[] = { 0, 1, 2, 2, 3, 0 };
-	this->gameMeshes[Constants::GameEnums::MeshEnum::HOTBAR_BG_MESH] = std::make_unique<Mesh>(bgVerts, 4, quadIndices, 6);
-
-	// 2. Selector
-	Vertex selVerts[] = {
-		{glm::vec3(-0.46f, -0.96f, 0.f), white, t, n},
-		{glm::vec3(-0.34f, -0.96f, 0.f), white, t, n},
-		{glm::vec3(-0.34f, -0.84f, 0.f), white, t, n},
-		{glm::vec3(-0.46f, -0.84f, 0.f), white, t, n}
-	};
-	this->gameMeshes[Constants::GameEnums::MeshEnum::HOTBAR_SELECTOR_MESH] = std::make_unique<Mesh>(selVerts, 4, quadIndices, 6);
-
-	// ISOMETRIC BLOCK ICONS
-	Chunk* tempChunk = new Chunk(0,0);
-	// Empty chunk
-	for (int i = 0; i < Constants::World::CHUNK_WIDTH * Constants::World::CHUNK_HEIGHT * Constants::World::CHUNK_DEPTH; ++i) {
-		tempChunk->blocks[i] = Constants::BlockType::AIR;
-	}
-
-	// 1. Grass
-	tempChunk->setBlock(0, 0, 0, Constants::BlockType::GRASS);
-	MeshData grassData = tempChunk->buildMesh();
-	this->iconGrassMesh = std::make_unique<StandaloneVoxelMesh>(grassData.vertices.data(), grassData.vertices.size(), grassData.indices.data(), grassData.indices.size());
-	this->iconGrassMesh->setRotation(glm::vec3(25.f, 45.f, 0.f));
-	this->iconGrassMesh->setScale(glm::vec3(0.06f));
-
-	// 2. Dirt
-	tempChunk->setBlock(0, 0, 0, Constants::BlockType::DIRT);
-	MeshData dirtData = tempChunk->buildMesh();
-	this->iconDirtMesh = std::make_unique<StandaloneVoxelMesh>(dirtData.vertices.data(), dirtData.vertices.size(), dirtData.indices.data(), dirtData.indices.size());
-	this->iconDirtMesh->setRotation(glm::vec3(25.f, 45.f, 0.f));
-	this->iconDirtMesh->setScale(glm::vec3(0.06f));
-
-	// 3. Stone
-	tempChunk->setBlock(0, 0, 0, Constants::BlockType::STONE);
-	MeshData stoneData = tempChunk->buildMesh();
-	this->iconStoneMesh = std::make_unique<StandaloneVoxelMesh>(stoneData.vertices.data(), stoneData.vertices.size(), stoneData.indices.data(), stoneData.indices.size());
-	this->iconStoneMesh->setRotation(glm::vec3(25.f, 45.f, 0.f));
-	this->iconStoneMesh->setScale(glm::vec3(0.06f));
-
-	// SELECTION WIREFRAME
-	for (int i = 0; i < Constants::World::CHUNK_WIDTH * Constants::World::CHUNK_HEIGHT * Constants::World::CHUNK_DEPTH; ++i) {
-		tempChunk->blocks[i] = Constants::BlockType::AIR;
-	}
-	tempChunk->setBlock(0, 0, 0, Constants::BlockType::DIRT);
-
-	MeshData wireframeData = tempChunk->buildMesh();
-	this->selectionWireframe = std::make_unique<StandaloneVoxelMesh>(wireframeData.vertices.data(), wireframeData.vertices.size(), wireframeData.indices.data(), wireframeData.indices.size());
-	this->selectionWireframe->setScale(glm::vec3(1.01f));
-
-	delete tempChunk;
+	//Shader* uiShader, Shader* iconShader, Texture* atlas
+	uirenderer = std::make_unique<UIRenderer>(
+		this->shaders[Constants::GameEnums::ShaderEnum::SHADER_UI].get(),
+		this->shaders[Constants::GameEnums::ShaderEnum::SHADER_ICON].get(),
+		this->textures[Constants::GameEnums::TextureEnum::TEX_ATLAS].get()
+	);
 }
 
 void Game::initLights()
@@ -305,15 +218,7 @@ Game::Game(const char* title,
 	this->lastTime		= 0.0f;
 	this->clickCooldown = 0.0f;
 
-	this->lastMouseX = 0.0f;
-	this->lastMouseY = 0.0f;
-	this->mouseX = 0.0f;
-	this->mouseY = 0.0f;
-	this->mouseOffsetX = 0.0f;
-	this->mouseOffsetY = 0.0f;
-	this->firstMouse = true;
-
-	this->activeSlot = 0;
+	inputHandler = std::make_unique<InputHandler>();
 
 	// Init System
 	this->initCamera();
@@ -340,7 +245,6 @@ Game::~Game()
 	this->shaders.clear();
 	this->textures.clear();
 	this->materials.clear();
-	this->gameMeshes.clear();
 	this->pointLights.clear();
 	this->dirLights.clear();
 	this->window.reset();
@@ -392,192 +296,10 @@ void Game::updateDt()
 	}
 }
 
-void Game::updateMouseInput()
-{
-	glfwGetCursorPos(this->window.get(), &this->mouseX, &this->mouseY);
-
-	if (this->firstMouse)
-	{
-		this->firstMouse = false;
-		this->lastMouseX = this->mouseX;
-		this->lastMouseY = this->mouseY;
-	}
-
-	// Offset
-	this->mouseOffsetX = this->mouseX - this->lastMouseX;
-	this->mouseOffsetY = this->lastMouseY - this->mouseY;
-
-	// Set last X and Y
-	this->lastMouseX = this->mouseX;
-	this->lastMouseY = this->mouseY;
-
-	// Click Cooldown
-	if (this->clickCooldown > 0.0f) {
-		this->clickCooldown -= this->dt;
-	}
-
-	// RAYCASTING
-	glm::vec3 rayPos = this->camera->getPosition();
-	glm::vec3 rayDir = this->camera->getFront();
-	float stepSize = 0.05f; // Ray precision
-	float reach = 6.0f;     // Range (in blocks)
-
-	glm::vec3 lastEmptyPos = rayPos;
-	bool hit = false;
-	int hitX, hitY, hitZ;          // Coords of hit block
-	int lastX, lastY, lastZ;       // Coords of last empty block
-
-	// Ray advancement loop
-	for (float d = 0; d < reach; d += stepSize)
-	{
-		rayPos += rayDir * stepSize;
-
-		// Round position (Cube goes from -0.5 to +0.5 relatively to its centre)
-		int cx = (int)std::round(rayPos.x);
-		int cy = (int)std::round(rayPos.y);
-		int cz = (int)std::round(rayPos.z);
-
-		if (this->world->getBlock(cx, cy, cz) != Constants::BlockType::AIR)
-		{
-			hit = true;
-			hitX = cx; hitY = cy; hitZ = cz;
-
-			lastX = (int)std::round(lastEmptyPos.x);
-			lastY = (int)std::round(lastEmptyPos.y);
-			lastZ = (int)std::round(lastEmptyPos.z);
-			break;
-		}
-		lastEmptyPos = rayPos; // Save empty pos
-	}
-
-	this->isLookingAtBlock = hit;
-
-	if (hit)
-	{
-		this->targetBlockPos = glm::vec3(hitX, hitY, hitZ);
-
-		if (this->clickCooldown <= 0.0f)
-		{
-			bool leftClick = glfwGetMouseButton(this->window.get(), GLFW_MOUSE_BUTTON_1) == GLFW_PRESS;
-			bool rightClick = glfwGetMouseButton(this->window.get(), GLFW_MOUSE_BUTTON_2) == GLFW_PRESS;
-
-			if (leftClick || rightClick)
-			{
-				this->clickCooldown = 0.2f; // 200 ms cooldown
-
-				if (leftClick) {
-					// Break
-					this->world->setBlock(hitX, hitY, hitZ, Constants::BlockType::AIR);
-				}
-				else if (rightClick) {
-					// Place
-					uint8_t blockToPlace = this->hotbarBlocks[this->activeSlot];
-					if (blockToPlace != Constants::BlockType::AIR) {
-
-						// To avoid placing blocks on corners when looking diagonally
-						int diffX = std::abs(hitX - lastX);
-						int diffY = std::abs(hitY - lastY);
-						int diffZ = std::abs(hitZ - lastZ);
-
-						if ((diffX + diffY + diffZ) == 1)
-						{
-							// Compute bounds
-							float bMinX = lastX - 0.5f; float bMaxX = lastX + 0.5f;
-							float bMinY = lastY - 0.5f; float bMaxY = lastY + 0.5f;
-							float bMinZ = lastZ - 0.5f; float bMaxZ = lastZ + 0.5f;
-
-							// Compute player bounds
-							float pWidth = 0.6f;
-							float pHeight = 1.8f;
-
-							// this->player->position is equal to the center of the player's feet
-							float pMinX = this->player->position.x - (pWidth / 2.0f);
-							float pMaxX = this->player->position.x + (pWidth / 2.0f);
-							float pMinY = this->player->position.y;
-							float pMaxY = this->player->position.y + pHeight;
-							float pMinZ = this->player->position.z - (pWidth / 2.0f);
-							float pMaxZ = this->player->position.z + (pWidth / 2.0f);
-
-							// Checks overlapping
-							bool intersectX = (pMinX < bMaxX && pMaxX > bMinX);
-							bool intersectY = (pMinY < bMaxY && pMaxY > bMinY);
-							bool intersectZ = (pMinZ < bMaxZ && pMaxZ > bMinZ);
-
-							// If not colliding with player, place the block
-							if (!(intersectX && intersectY && intersectZ)) {
-								this->world->setBlock(lastX, lastY, lastZ, blockToPlace);
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-}
-
-void Game::updateKeyboardInput()
-{
-	// Program
-	if (glfwGetKey(this->window.get(), GLFW_KEY_ESCAPE) == GLFW_PRESS)
-	{
-		glfwSetWindowShouldClose(this->window.get(), GLFW_TRUE);
-	}
-
-	// Walking speed
-	float speed = Constants::Player::WALKING_SPEED;
-	if (glfwGetKey(this->window.get(), GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) speed = Constants::Player::RUNNING_SPEED; // Sprint
-
-	// Horizontal camera vectors
-	glm::vec3 camFront = glm::normalize(glm::vec3(this->camera->getFront().x, 0.0f, this->camera->getFront().z));
-	glm::vec3 camRight = glm::normalize(glm::cross(camFront, glm::vec3(0.0f, 1.0f, 0.0f)));
-
-	// Apply acceleration to player velocity
-	if (glfwGetKey(this->window.get(), GLFW_KEY_W) == GLFW_PRESS)
-		this->player->velocity += camFront * speed * this->dt;
-	if (glfwGetKey(this->window.get(), GLFW_KEY_S) == GLFW_PRESS)
-		this->player->velocity -= camFront * speed * this->dt;
-	if (glfwGetKey(this->window.get(), GLFW_KEY_A) == GLFW_PRESS)
-		this->player->velocity -= camRight * speed * this->dt;
-	if (glfwGetKey(this->window.get(), GLFW_KEY_D) == GLFW_PRESS)
-		this->player->velocity += camRight * speed * this->dt;
-
-	// Jumping
-	if (glfwGetKey(this->window.get(), GLFW_KEY_SPACE) == GLFW_PRESS && this->player->isGrounded)
-		this->player->velocity.y = 8.5f;
-	
-	// Change Hotbar Slot
-	if (glfwGetKey(this->window.get(), GLFW_KEY_1) == GLFW_PRESS) this->activeSlot = 0;
-	if (glfwGetKey(this->window.get(), GLFW_KEY_2) == GLFW_PRESS) this->activeSlot = 1;
-	if (glfwGetKey(this->window.get(), GLFW_KEY_3) == GLFW_PRESS) this->activeSlot = 2;
-	if (glfwGetKey(this->window.get(), GLFW_KEY_4) == GLFW_PRESS) this->activeSlot = 3;
-	if (glfwGetKey(this->window.get(), GLFW_KEY_5) == GLFW_PRESS) this->activeSlot = 4;
-	if (glfwGetKey(this->window.get(), GLFW_KEY_6) == GLFW_PRESS) this->activeSlot = 5;
-	if (glfwGetKey(this->window.get(), GLFW_KEY_7) == GLFW_PRESS) this->activeSlot = 6;
-	if (glfwGetKey(this->window.get(), GLFW_KEY_8) == GLFW_PRESS) this->activeSlot = 7;
-	if (glfwGetKey(this->window.get(), GLFW_KEY_9) == GLFW_PRESS) this->activeSlot = 8;
-
-	// Toggle Benchmarking Mode (Press B)
-	if (glfwGetKey(this->window.get(), GLFW_KEY_B) == GLFW_PRESS)
-	{
-		if (!this->bKeyPressed) {
-			this->isBenchmarking = !this->isBenchmarking;
-			this->benchmarkTimer = 0.0f;
-			this->benchmarkFrames = 0;
-			std::cout << (this->isBenchmarking ? "\n[BENCHMARK] Avviato giro di 360 gradi..." : "\n[BENCHMARK] Annullato.") << std::endl;
-		}
-		this->bKeyPressed = true;
-	}
-	else {
-		this->bKeyPressed = false;
-	}
-}
-
 void Game::updateInput()
 {
 	glfwPollEvents();
-
-	this->updateKeyboardInput();
-	this->updateMouseInput();
+	inputHandler->update(window.get(), this->dt, this->camera.get(), this->player.get(), this->world.get());
 
 	// Update World
 	this->world->update(this->player->position);
@@ -586,7 +308,7 @@ void Game::updateInput()
 	glm::vec3 eyeOffset = glm::vec3(0.0f, 1.6f, 0.0f);
 	this->camera->setPosition(this->player->position + eyeOffset);
 
-	this->camera->updateInput(dt, -1, this->mouseOffsetX, this->mouseOffsetY);
+	this->camera->updateInput(dt, -1, inputHandler->mouseOffsetX, inputHandler->mouseOffsetY);
 }
 
 void Game::update()
@@ -594,31 +316,6 @@ void Game::update()
 	// Update Input
 	this->updateDt();
 	this->updateInput();
-
-	// Benchmarking Mode
-	if (this->isBenchmarking)
-	{
-		this->benchmarkTimer += this->dt;
-		this->benchmarkFrames++;
-
-		float forcedMouseOffsetX = (36.0f * this->dt) / 0.08f;
-		this->camera->updateInput(this->dt, -1, forcedMouseOffsetX, 0.0f);
-
-		if (this->benchmarkTimer >= 10.0f)
-		{
-			float avgFPS = this->benchmarkFrames / this->benchmarkTimer;
-			float avgFrameTime = (this->benchmarkTimer / this->benchmarkFrames) * 1000.0f;
-
-			std::cout << "---------------------------------" << std::endl;
-			std::cout << " RISULTATI BENCHMARK (10 SECONDI) " << std::endl;
-			std::cout << " Render Distance: " << Constants::World::DEFAULT_RENDER_DISTANCE << " Chunk" << std::endl;
-			std::cout << " FPS Medi:        " << avgFPS << std::endl;
-			std::cout << " Frame Time Medio:" << avgFrameTime << " ms" << std::endl;
-			std::cout << "---------------------------------" << std::endl;
-
-			this->isBenchmarking = false;
-		}
-	}
 }
 
 void Game::render()
@@ -633,81 +330,15 @@ void Game::render()
 	if (this->world != nullptr)
 		this->world->render(this->shaders[Constants::GameEnums::ShaderEnum::SHADER_CORE_PROGRAM].get(), projView);
 
-	// Draw Selection Wireframe
-	if (this->isLookingAtBlock)
-	{
-		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-		glLineWidth(2.0f);
-		this->selectionWireframe->setPosition(this->targetBlockPos);
-
-		// Turn off lights
-		this->shaders[Constants::GameEnums::ShaderEnum::SHADER_CORE_PROGRAM]->use();
-		this->shaders[Constants::GameEnums::ShaderEnum::SHADER_CORE_PROGRAM]->setVec3f(glm::vec3(0.f), "dirLight.color");
-		this->shaders[Constants::GameEnums::ShaderEnum::SHADER_CORE_PROGRAM]->setVec3f(glm::vec3(0.f), "pointLight.color");
-		this->shaders[Constants::GameEnums::ShaderEnum::SHADER_CORE_PROGRAM]->set1i(0, "useTexture");
-		this->shaders[Constants::GameEnums::ShaderEnum::SHADER_CORE_PROGRAM]->setVec2f(glm::vec2(0.f, 0.f), "chunkOffset");
-
-		this->selectionWireframe->render(this->shaders[Constants::GameEnums::ShaderEnum::SHADER_CORE_PROGRAM].get());
-
-		// Turn lights back on
-		this->shaders[Constants::GameEnums::ShaderEnum::SHADER_CORE_PROGRAM]->setVec3f(this->dirLights[0]->getColor(), "dirLight.color");
-		this->shaders[Constants::GameEnums::ShaderEnum::SHADER_CORE_PROGRAM]->setVec3f(this->pointLights[0]->getColor(), "pointLight.color");
-
-		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	}
-
-	// Draw Crosshair and Hotbar (UI)
-	glDisable(GL_DEPTH_TEST);
-
-	this->shaders[Constants::GameEnums::ShaderEnum::SHADER_UI]->use();
-
-	// Compute Aspect Ratio
-	int fbw, fbh;
-	glfwGetFramebufferSize(this->window.get(), &fbw, &fbh);
-	float aspectRatio = (float)fbh / (float)fbw;
-
-	// Send to shader
-	this->shaders[Constants::GameEnums::ShaderEnum::SHADER_UI]->set1f(aspectRatio, "aspectRatio");
-	this->shaders[Constants::GameEnums::ShaderEnum::SHADER_UI]->set1i(0, "useTexture");
-
-	// Hotbar
-	this->shaders[Constants::GameEnums::ShaderEnum::SHADER_UI]->set1f(0.5f, "uiAlpha");
-	this->gameMeshes[Constants::GameEnums::MeshEnum::HOTBAR_BG_MESH]->render(this->shaders[Constants::GameEnums::ShaderEnum::SHADER_UI].get());
-
-	// Selector
-	// Selector
-	float selectorXOffset = (float)this->activeSlot * 0.1f;
-	this->shaders[Constants::GameEnums::ShaderEnum::SHADER_UI]->set1f(0.8f, "uiAlpha");
-	this->gameMeshes[Constants::GameEnums::MeshEnum::HOTBAR_SELECTOR_MESH]->setPosition(glm::vec3(selectorXOffset, 0.0f, 0.0f));
-	this->gameMeshes[Constants::GameEnums::MeshEnum::HOTBAR_SELECTOR_MESH]->render(this->shaders[Constants::GameEnums::ShaderEnum::SHADER_UI].get());
-
-	// Crosshair
-	this->shaders[Constants::GameEnums::ShaderEnum::SHADER_UI]->set1f(1.0f, "uiAlpha");
-	this->gameMeshes[Constants::GameEnums::MeshEnum::CROSSHAIR_MESH]->render(this->shaders[Constants::GameEnums::ShaderEnum::SHADER_UI].get());
-
-	// Draw Hotbar Icons
-	glClear(GL_DEPTH_BUFFER_BIT);
-	glEnable(GL_DEPTH_TEST);
-
-	this->shaders[Constants::GameEnums::ShaderEnum::SHADER_ICON]->use();
-	this->shaders[Constants::GameEnums::ShaderEnum::SHADER_ICON]->set1f(aspectRatio, "aspectRatio");
-	this->shaders[Constants::GameEnums::ShaderEnum::SHADER_ICON]->set1i(1, "useTexture");
-	this->shaders[Constants::GameEnums::ShaderEnum::SHADER_ICON]->set1i(0, "uiTexture");
-	this->shaders[Constants::GameEnums::ShaderEnum::SHADER_ICON]->set1f(1.0f, "uiAlpha");
-
-	for (int i = 0; i < 9; ++i) {
-		uint8_t blockType = this->hotbarBlocks[i];
-		if (blockType == Constants::BlockType::AIR) continue;
-
-		float iconXOffset = -0.40f + (i * 0.1f);
-		this->shaders[Constants::GameEnums::ShaderEnum::SHADER_ICON]->setVec2f(glm::vec2(iconXOffset, -0.90f), "uiOffset");
-
-		this->textures[Constants::GameEnums::TextureEnum::TEX_ATLAS]->bind(0);
-
-		if (blockType == Constants::BlockType::GRASS) this->iconGrassMesh->render(this->shaders[Constants::GameEnums::ShaderEnum::SHADER_ICON].get());
-		else if (blockType == Constants::BlockType::DIRT) this->iconDirtMesh->render(this->shaders[Constants::GameEnums::ShaderEnum::SHADER_ICON].get());
-		else if (blockType == Constants::BlockType::STONE) this->iconStoneMesh->render(this->shaders[Constants::GameEnums::ShaderEnum::SHADER_ICON].get());
-	}
+	uirenderer->render(
+		this->window.get(), this->shaders[Constants::GameEnums::ShaderEnum::SHADER_CORE_PROGRAM].get(),
+		this->shaders[Constants::GameEnums::ShaderEnum::SHADER_UI].get(),
+		this->shaders[Constants::GameEnums::ShaderEnum::SHADER_ICON].get(),
+		this->textures[Constants::GameEnums::TextureEnum::TEX_ATLAS].get(),
+		inputHandler->activeSlot, inputHandler->hotbarBlocks,
+		inputHandler->isLookingAtBlock, inputHandler->targetBlockPos,
+		this->dirLights[0]->getColor(), this->pointLights[0]->getColor()
+	);
 
 	glfwSwapBuffers(this->window.get());
 	glFlush();

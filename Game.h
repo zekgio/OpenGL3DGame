@@ -12,6 +12,8 @@
 #include "Shader.h"
 #include "Player.h"
 #include "World.h"
+#include "InputHandler.h"
+#include "UIRenderer.h"
 
 // TODO:
 // Fixes:
@@ -46,11 +48,8 @@ private:
 	float fpsTimer = 0.0f;
 	int frameCount = 0;
 	float maxFrameTime = 0.0f;
-	// Mouse Input
-	double lastMouseX, lastMouseY;
-	double mouseX, mouseY;
-	double mouseOffsetX, mouseOffsetY;
-	bool firstMouse;
+	// Input
+	std::unique_ptr <InputHandler> inputHandler;
 	// Camera
 	std::unique_ptr<Camera> camera;
 	// Matrices
@@ -62,34 +61,14 @@ private:
 	// Resources
 	std::vector<std::unique_ptr<Shader>> shaders;
 	std::vector<std::unique_ptr<Texture>> textures;
-	std::vector<std::unique_ptr<Mesh>> gameMeshes;
-	std::unique_ptr<StandaloneVoxelMesh> iconGrassMesh;
-	std::unique_ptr<StandaloneVoxelMesh> iconDirtMesh;
-	std::unique_ptr<StandaloneVoxelMesh> iconStoneMesh;
-	std::unique_ptr<StandaloneVoxelMesh> selectionWireframe;
 	std::vector<std::unique_ptr<Material>> materials;
 	std::vector<std::unique_ptr<PointLight>> pointLights;
 	std::vector<std::unique_ptr<DirectionalLight>> dirLights;
+	std::unique_ptr <UIRenderer> uirenderer;
 	// Chunk and Base Models
 	std::unique_ptr<World> world;
-	// Block Selection
-	bool isLookingAtBlock = false;
-	glm::vec3 targetBlockPos = glm::vec3(0.f);
 	// Player
 	std::unique_ptr<Player> player;
-	// Benchmarking Variables
-	bool isBenchmarking = false;
-	float benchmarkTimer = 0.0f;
-	int benchmarkFrames = 0;
-	bool bKeyPressed = false;
-	
-	int activeSlot;
-	uint8_t hotbarBlocks[9] = {
-		Constants::BlockType::GRASS,
-		Constants::BlockType::DIRT,
-		Constants::BlockType::STONE,
-		Constants::BlockType::AIR, Constants::BlockType::AIR, Constants::BlockType::AIR, Constants::BlockType::AIR, Constants::BlockType::AIR, Constants::BlockType::AIR
-	};
 
 // Private Functions
 	void initCamera();
@@ -126,8 +105,6 @@ public:
 
 // Functions
 	void updateDt();
-	void updateMouseInput();
-	void updateKeyboardInput();
 	void updateInput();
 	void update();
 	void render();
