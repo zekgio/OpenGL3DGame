@@ -89,31 +89,32 @@ namespace Constants {
         const uint8_t GRASS = 1;
         const uint8_t DIRT = 2;
         const uint8_t STONE = 3;
+        const uint8_t BEDROCK = 4;
     }
 
     // Game World Constants
     namespace World {
         const int CHUNK_WIDTH  = 16;
-        const int CHUNK_HEIGHT = 256;
+        const int CHUNK_HEIGHT = 320;
         const int CHUNK_DEPTH  = 16;
         const int MOUNTAIN_THRESHOLD = 150;
         const int MIN_SURFACE        = 70;
         const int MIN_DIRT_DEPTH = 0;
         const int MAX_DIRT_DEPTH = 3;
-        const int DEFAULT_SURFACE_HEIGHT = 125;
+        const int DEFAULT_SURFACE_HEIGHT = 75;
         const int SURFACE_NOISE_COEFF = 55;
         const float TERRAIN_NOISE_FREQUENCY = 0.04f;
 		const float CONT_NOISE_FREQUENCY    = 0.007f;
         const float CAVE_NOISE_FREQUENCY    = 0.04f;
         const float NORMALIZATION_EXPONENT  = 0.1f;
-        const int DEFAULT_RENDER_DISTANCE = 17;
+        const int DEFAULT_RENDER_DISTANCE = 40;
         const int LOD_DISTANCE = 40;
     }
 
     // Player
     namespace Player {
-        const float WALKING_SPEED = 30.f;
-        const float RUNNING_SPEED = 52.0f;
+        const float WALKING_SPEED = 150.f;
+        const float RUNNING_SPEED = 350.0f;
     }
 }
 

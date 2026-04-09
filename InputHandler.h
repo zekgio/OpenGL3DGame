@@ -21,7 +21,7 @@ public:
         Constants::BlockType::AIR, Constants::BlockType::AIR
     };
     bool isBenchmarking = false;
-    float benchmarkTimer = 0.2f;
+    float benchmarkTimer = 0.1f;
     int benchmarkFrames = 0;
 
     InputHandler() = default;

@@ -183,7 +183,7 @@ void InputHandler::updateKeyboard(GLFWwindow* window, float dt, Camera* camera, 
 
 	// Jumping
 	if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && player->isGrounded)
-		player->velocity.y = 8.5f;
+		player->velocity.y = 38.5f;
 
 	// Change Hotbar Slot
 	if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS) this->activeSlot = 0;

@@ -39,7 +39,7 @@ void Game::initWindow(const char* title, bool resizable)
 	glfwGetFramebufferSize(this->window.get(), &this->frameBufferW, &this->frameBufferH);
 	glViewport(0, 0, this->frameBufferW, this->frameBufferH);
 	glfwMakeContextCurrent(this->window.get()); // Important for glew
-	glfwSwapInterval(0); // if zero no vsync for benchmarking, if 1 vsync enabled
+	glfwSwapInterval(1); // if zero no vsync for benchmarking, if 1 vsync enabled
 	// TIMESTAMP OF IMPROVEMENTS (referred to release with 17 render distance without vsync, 5090rtx):
 	// After Adding Benchmark mode:			avg fps: 234.8    avg ms: 4.258
 	// After Adding Greedy Meshing:			avg fps: 240.0    avg ms: 4.167
@@ -120,6 +120,19 @@ void Game::initModels()
 { 
 	int myWorldSeed = static_cast<int>(std::time(nullptr));
 	Chunk::worldSeed = myWorldSeed;
+
+	Chunk::terrainNoise.SetNoiseType(FastNoiseLite::NoiseType_Perlin);
+	Chunk::terrainNoise.SetSeed(Chunk::worldSeed);
+	Chunk::terrainNoise.SetFrequency(0.0099f);
+
+	// Noise for caverns and holes (3D)
+	Chunk::caveNoise.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2);
+	Chunk::caveNoise.SetFrequency(0.015f);
+	Chunk::caveNoise.SetSeed(Chunk::worldSeed + 100);
+	Chunk::caveNoise2.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2);
+	Chunk::caveNoise2.SetFrequency(0.015f);
+	Chunk::caveNoise2.SetSeed(Chunk::worldSeed + 900);
+
 	this->world = std::make_unique<World>(
 		this->materials[Constants::GameEnums::MaterialEnum::MAT_1].get(),
 		this->textures[Constants::GameEnums::TextureEnum::TEX_ATLAS].get(),

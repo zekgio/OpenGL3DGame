@@ -8,43 +8,22 @@ Chunk::Chunk(int x, int z) : chunkX(x), chunkZ(z), worldOffsetX(x*CHUNK_WIDTH), 
 {
 	blocks.resize(CHUNK_WIDTH * CHUNK_HEIGHT * CHUNK_DEPTH, Constants::BlockType::AIR);
 
-	// Noise for terrain height (2D)
-	FastNoiseLite terrainNoise;
-	terrainNoise.SetNoiseType(FastNoiseLite::NoiseType_Perlin);
-	terrainNoise.SetFractalType(FastNoiseLite::FractalType_FBm); // Adding octaves for more detail
-	terrainNoise.SetFractalOctaves(2);
-	// Low frequency for hills
-	terrainNoise.SetFrequency(Constants::World::TERRAIN_NOISE_FREQUENCY);
-	terrainNoise.SetSeed(Chunk::worldSeed);
-
-	// Continentalness Noise
-	FastNoiseLite continentalNoise;
-	continentalNoise.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2);
-	// Low frequency for "biomes"
-	continentalNoise.SetFrequency(Constants::World::CONT_NOISE_FREQUENCY);
-	continentalNoise.SetSeed(Chunk::worldSeed + 9999);
-
-	// Noise for caverns and holes (3D)
-	FastNoiseLite caveNoise;
-	caveNoise.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2); // Simplex is great for tunnels
-	caveNoise.SetFrequency(CAVE_NOISE_FREQUENCY);
-	caveNoise.SetSeed(Chunk::worldSeed + 2468);
+	float threshold = 0.05f;
+	float shadeStart = 55.f;
 
 	for (int x = 0; x < CHUNK_WIDTH; ++x) {
 		for (int z = 0; z < CHUNK_DEPTH; ++z) {
 			float globalX = x + worldOffsetX;
 			float globalZ = z + worldOffsetZ;
 
-			// Sampling ground height noise
-			float tNoise = terrainNoise.GetNoise(globalX, globalZ);
-			float normalizedTerrain = (tNoise + 1.0f) * 0.5f;
-			normalizedTerrain = std::pow(normalizedTerrain, Constants::World::NORMALIZATION_EXPONENT);
-
-			// Sampling continentalness noise
-			float cNoise = continentalNoise.GetNoise(globalX, globalZ);
-			float continentalness = (cNoise + 1.0f) * 0.5f;
-
-			int surfaceHeight = DEFAULT_SURFACE_HEIGHT + (int)(normalizedTerrain * continentalness * SURFACE_NOISE_COEFF);
+			auto noise = [](float globalX, float globalY) {
+				return (Chunk::terrainNoise.GetNoise(globalX, globalY) + 1.f) / 2.f;
+				};
+			float e = noise(globalX, globalZ)
+				+ 0.5f * noise(globalX * 2.f, globalZ * 2.f)
+				+ 0.25f * noise(globalX * 4.f, globalZ * 4.f);
+			e = e / (1.f + 0.5f + 0.25f); // Normalization to [0,1]
+			int surfaceHeight = 70 + e*e*e*e*e*e*450;
 
 			// Variation of dirt width
 			int dirtDepth = MIN_DIRT_DEPTH;
@@ -61,15 +40,31 @@ Chunk::Chunk(int x, int z) : chunkX(x), chunkZ(z), worldOffsetX(x*CHUNK_WIDTH), 
 					blocks[index] = Constants::BlockType::AIR;
 					continue;
 				}
-
-				float carve = caveNoise.GetNoise(globalX, (float)y, globalZ);
-
-				// If value is high enough, remove block
-				if (carve > 0.4f) {
-					blocks[index] = Constants::BlockType::AIR;
+				if (y == 0) {
+					blocks[index] = Constants::BlockType::BEDROCK;
 					continue;
 				}
 
+				// For caves
+				float currentThreshold = threshold;
+				if (y > shadeStart) {
+					// Compute proximity to surface
+					float shadeDistance = surfaceHeight - shadeStart;
+					float percentage = (surfaceHeight + 2 - y) / shadeDistance;
+					// Lock percentage to [0,1]
+					if (percentage < 0.0f) percentage = 0.0f;
+					if (percentage > 1.0f) percentage = 1.0f;
+					// Change dimension accordingly
+					currentThreshold *= percentage;
+				}
+				float n1 = caveNoise.GetNoise(globalX + 1000, float(y), globalZ + 1000);
+				float n2 = caveNoise2.GetNoise(globalX, float(y), globalZ);
+				float density = n1*n1 + n2*n2;
+
+				if (density < currentThreshold) {
+					blocks[index] = Constants::BlockType::AIR;
+					continue;
+				}
 				if (surfaceHeight >= MOUNTAIN_THRESHOLD) {
 					blocks[index] = Constants::BlockType::STONE;
 				}
@@ -139,7 +134,7 @@ MeshData Chunk::buildMesh() // Implementing the Greedy Meshing algorithm
 		q[axis] = 1; // Direction vector
 
 		// 2D mask for current plane. Max dim = H * W (256*16 = 4096)
-		uint32_t mask[4096];
+		uint32_t mask[5120];
 
 		int limitAxis = (axis == 0) ? W : (axis == 1) ? H : D;
 		int limitU = (u == 0) ? W : (u == 1) ? H : D;
@@ -232,6 +227,8 @@ MeshData Chunk::buildMesh() // Implementing the Greedy Meshing algorithm
 							texID = 2;
 						else if (blockType == Constants::BlockType::STONE)
 							texID = 3;
+						else if (blockType == Constants::BlockType::BEDROCK)
+							texID = 4;
 
 						// 4 angles
 						ChunkVertex v0 = ChunkVertex::pack(this->chunkX, this->chunkZ, x[0], x[1], x[2], texID, norm);

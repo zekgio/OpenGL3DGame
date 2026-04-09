@@ -28,6 +28,9 @@ class Chunk
 {
 public:
 	static int worldSeed;
+	inline static FastNoiseLite terrainNoise;
+	inline static FastNoiseLite caveNoise;
+	inline static FastNoiseLite caveNoise2;
 	const int chunkX, chunkZ;
 	const int worldOffsetX, worldOffsetZ;
 	std::vector<uint8_t> blocks;
