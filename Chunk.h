@@ -54,6 +54,6 @@ public:
 
 	int getTextureIndex(uint8_t type, FaceDirection face);
 
-	MeshData buildMesh();
-	MeshData buildLODMesh();
+	MeshData buildMesh(Chunk* negX = nullptr, Chunk* posX = nullptr, Chunk* negZ = nullptr, Chunk* posZ = nullptr);
+	MeshData buildLODMesh(Chunk* negX = nullptr, Chunk* posX = nullptr, Chunk* negZ = nullptr, Chunk* posZ = nullptr);
 };

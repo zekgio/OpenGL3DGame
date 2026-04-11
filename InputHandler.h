@@ -15,9 +15,8 @@ public:
     int activeSlot = 0;
     uint8_t hotbarBlocks[9] = {
         Constants::BlockType::GRASS, Constants::BlockType::DIRT,
-        Constants::BlockType::STONE,
-        Constants::BlockType::AIR, Constants::BlockType::AIR,
-        Constants::BlockType::AIR, Constants::BlockType::AIR,
+        Constants::BlockType::STONE, Constants::BlockType::BEDROCK,
+        Constants::BlockType::AIR, Constants::BlockType::AIR, Constants::BlockType::AIR,
         Constants::BlockType::AIR, Constants::BlockType::AIR
     };
     bool isBenchmarking = false;

@@ -1,4 +1,5 @@
 #version 450
+
 in vec3 vs_color;
 in vec3 vs_texcoord;
 in vec3 vs_normal;

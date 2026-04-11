@@ -13,7 +13,8 @@ namespace Constants {
             const int SHADER_CORE_PROGRAM = 0;
             const int SHADER_UI = 1;
             const int SHADER_ICON = 2;
-			const int COUNT_SHADERS = 3;
+            const int SHADER_WIREFRAME = 3;
+			const int COUNT_SHADERS = 4;
         }
 
 		namespace TextureEnum
@@ -51,7 +52,7 @@ namespace Constants {
     // Rendering
     namespace Camera {
         const float NEAR_PLANE = 0.1f;
-        const float FAR_PLANE = 1000.f;
+        const float FAR_PLANE = 5000.f;
         const float DEFAULT_FOV = 90.f;
         const float DEFAULT_CAMERA_Y = 150.f;
         const glm::vec3 WORLD_UP(0.f, 1.f, 0.f);
@@ -95,7 +96,7 @@ namespace Constants {
     // Game World Constants
     namespace World {
         const int CHUNK_WIDTH  = 16;
-        const int CHUNK_HEIGHT = 320;
+        const int CHUNK_HEIGHT = 352;
         const int CHUNK_DEPTH  = 16;
         const int MOUNTAIN_THRESHOLD = 150;
         const int MIN_SURFACE        = 70;
@@ -107,22 +108,22 @@ namespace Constants {
 		const float CONT_NOISE_FREQUENCY    = 0.007f;
         const float CAVE_NOISE_FREQUENCY    = 0.04f;
         const float NORMALIZATION_EXPONENT  = 0.1f;
-        const int DEFAULT_RENDER_DISTANCE = 40;
-        const int LOD_DISTANCE = 40;
+        const int DEFAULT_RENDER_DISTANCE = 70;
+        const int LOD_DISTANCE = 50;
     }
 
     // Player
     namespace Player {
         const float WALKING_SPEED = 150.f;
         const float RUNNING_SPEED = 350.0f;
+        const float JUMP_FORCE = 100.0f;
     }
 }
 
-struct DrawElementsIndirectCommand {
+struct DrawArraysIndirectCommand {
     GLuint count;         // Number of indices
     GLuint instanceCount; // 1
-	GLuint firstIndex;    // Global EBO offset (in number of indices, not in byte)
-	GLuint baseVertex;    // Global VBO offset (in number of vertices, not in byte)
+    GLuint first;         // Global offset inside SSBO
     GLuint baseInstance;  // 0
 };
 

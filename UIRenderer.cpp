@@ -65,23 +65,30 @@ UIRenderer::UIRenderer(Shader* uiShader, Shader* iconShader, Texture* atlas)
 	// 1. Grass
 	tempChunk->setBlock(0, 0, 0, Constants::BlockType::GRASS);
 	MeshData grassData = tempChunk->buildMesh();
-	this->iconGrassMesh = std::make_unique<StandaloneVoxelMesh>(grassData.vertices.data(), grassData.vertices.size(), grassData.indices.data(), grassData.indices.size());
+	this->iconGrassMesh = std::make_unique<StandaloneVoxelMesh>(grassData.vertices.data(), grassData.vertices.size());
 	this->iconGrassMesh->setRotation(glm::vec3(25.f, 45.f, 0.f));
 	this->iconGrassMesh->setScale(glm::vec3(0.06f));
 
 	// 2. Dirt
 	tempChunk->setBlock(0, 0, 0, Constants::BlockType::DIRT);
 	MeshData dirtData = tempChunk->buildMesh();
-	this->iconDirtMesh = std::make_unique<StandaloneVoxelMesh>(dirtData.vertices.data(), dirtData.vertices.size(), dirtData.indices.data(), dirtData.indices.size());
+	this->iconDirtMesh = std::make_unique<StandaloneVoxelMesh>(dirtData.vertices.data(), dirtData.vertices.size());
 	this->iconDirtMesh->setRotation(glm::vec3(25.f, 45.f, 0.f));
 	this->iconDirtMesh->setScale(glm::vec3(0.06f));
 
 	// 3. Stone
 	tempChunk->setBlock(0, 0, 0, Constants::BlockType::STONE);
 	MeshData stoneData = tempChunk->buildMesh();
-	this->iconStoneMesh = std::make_unique<StandaloneVoxelMesh>(stoneData.vertices.data(), stoneData.vertices.size(), stoneData.indices.data(), stoneData.indices.size());
+	this->iconStoneMesh = std::make_unique<StandaloneVoxelMesh>(stoneData.vertices.data(), stoneData.vertices.size());
 	this->iconStoneMesh->setRotation(glm::vec3(25.f, 45.f, 0.f));
 	this->iconStoneMesh->setScale(glm::vec3(0.06f));
+
+	// 4. BedRock
+	tempChunk->setBlock(0, 0, 0, Constants::BlockType::BEDROCK);
+	MeshData bedrockData = tempChunk->buildMesh();
+	this->iconBedRockMesh = std::make_unique<StandaloneVoxelMesh>(bedrockData.vertices.data(), bedrockData.vertices.size());
+	this->iconBedRockMesh->setRotation(glm::vec3(25.f, 45.f, 0.f));
+	this->iconBedRockMesh->setScale(glm::vec3(0.06f));
 
 	// SELECTION WIREFRAME
 	for (int i = 0; i < Constants::World::CHUNK_WIDTH * Constants::World::CHUNK_HEIGHT * Constants::World::CHUNK_DEPTH; ++i) {
@@ -90,7 +97,7 @@ UIRenderer::UIRenderer(Shader* uiShader, Shader* iconShader, Texture* atlas)
 	tempChunk->setBlock(0, 0, 0, Constants::BlockType::DIRT);
 
 	MeshData wireframeData = tempChunk->buildMesh();
-	this->selectionWireframe = std::make_unique<StandaloneVoxelMesh>(wireframeData.vertices.data(), wireframeData.vertices.size(), wireframeData.indices.data(), wireframeData.indices.size());
+	this->selectionWireframe = std::make_unique<StandaloneVoxelMesh>(wireframeData.vertices.data(), wireframeData.vertices.size());
 	this->selectionWireframe->setScale(glm::vec3(1.01f));
 
 	delete tempChunk;
@@ -102,10 +109,11 @@ UIRenderer::~UIRenderer()
 }
 
 void UIRenderer::render(GLFWwindow* window, Shader* coreShader, Shader* uiShader,
-    Shader* iconShader, Texture* atlas,
+    Shader* iconShader, Shader* wireframeShader, Texture* atlas,
     int activeSlot, const uint8_t* hotbarBlocks,
     bool isLookingAtBlock, glm::vec3 targetBlockPos,
-    const glm::vec3& dirLightColor, const glm::vec3& pointLightColor)
+    const glm::vec3& dirLightColor, const glm::vec3& pointLightColor,
+	const glm::mat4& projView)
 {
 	// Draw Selection Wireframe
 	if (isLookingAtBlock)
@@ -114,18 +122,11 @@ void UIRenderer::render(GLFWwindow* window, Shader* coreShader, Shader* uiShader
 		glLineWidth(2.0f);
 		this->selectionWireframe->setPosition(targetBlockPos);
 
-		// Turn off lights
-		coreShader->use();
-		coreShader->setVec3f(glm::vec3(0.f), "dirLight.color");
-		coreShader->setVec3f(glm::vec3(0.f), "pointLight.color");
-		coreShader->set1i(0, "useTexture");
-		coreShader->setVec2f(glm::vec2(0.f, 0.f), "chunkOffset");
+		wireframeShader->use();
+		wireframeShader->setVec2f(glm::vec2(0.f, 0.f), "chunkOffset");
+		wireframeShader->setMat4fv(projView, "ProjectionViewMatrix");
 
-		this->selectionWireframe->render(coreShader);
-
-		// Turn lights back on
-		coreShader->setVec3f(dirLightColor, "dirLight.color");
-		coreShader->setVec3f(pointLightColor, "pointLight.color");
+		this->selectionWireframe->render(wireframeShader);
 
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	}
@@ -180,6 +181,7 @@ void UIRenderer::render(GLFWwindow* window, Shader* coreShader, Shader* uiShader
 		if (blockType == Constants::BlockType::GRASS) this->iconGrassMesh->render(iconShader);
 		else if (blockType == Constants::BlockType::DIRT) this->iconDirtMesh->render(iconShader);
 		else if (blockType == Constants::BlockType::STONE) this->iconStoneMesh->render(iconShader);
+		else if (blockType == Constants::BlockType::BEDROCK) this->iconBedRockMesh->render(iconShader);
 	}
 }
 

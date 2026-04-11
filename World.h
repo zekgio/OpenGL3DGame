@@ -37,7 +37,7 @@ struct Region {
 	glm::vec3 maxP;
 	std::unordered_set<glm::ivec2, ivec2Hash> activeChunks;
 
-	Region() = default;
+	Region() : minP(100000.f, 100000.f, 100000.f), maxP(0.f, 0.f, 0.f) {};
 	Region(glm::vec3 min, glm::vec3 max) : minP(min), maxP(max) {}
 };
 
@@ -94,11 +94,10 @@ public:
 			if (freeList[i].size >= size) {
 				size_t allocatedOffset = freeList[i].offset;
 
-				if (freeList[i].size == size) {
-					freeList[i] = freeList.back();
-					freeList.pop_back();
-				}
-				else {
+				if (freeList[i].size == size)
+				{
+					freeList.erase(freeList.begin() + i);
+				} else {
 					freeList[i].offset += size;
 					freeList[i].size -= size;
 				}
@@ -118,23 +117,38 @@ public:
 	}
 
 	void free(size_t offset, size_t size) {
-		if (size > 0) {
-			freeList.push_back({ offset, size });
+		if (size == 0) return;
+		freeList.push_back({ offset, size });
+
+		// Order by offset to facilitate merging
+		std::sort(freeList.begin(), freeList.end(), [](const FreeBlock& a, const FreeBlock& b) {
+			return a.offset < b.offset;
+		});
+
+		// Merge contiguous free blocks
+		std::vector<FreeBlock> merged;
+		merged.push_back(freeList[0]);
+		for (size_t i = 1; i < freeList.size(); ++i) {
+			if (merged.back().offset + merged.back().size == freeList[i].offset) {
+				merged.back().size += freeList[i].size;
+			}
+			else {
+				merged.push_back(freeList[i]);
+			}
 		}
+		freeList = std::move(merged);
 	}
 };
 
 class World {
 private:
 	// AZDO Global Buffers
-	GLuint globalVAO;
-	GLuint globalVBO;
-	GLuint globalEBO;
 	GLuint globalDIB;
-	std::vector<DrawElementsIndirectCommand> indirectCommands;
+	GLuint globalSSBO;
+	GLuint emptyVAO;
+	std::vector<DrawArraysIndirectCommand> indirectCommands;
 
 	VRAMAllocator vertexAllocator;
-	VRAMAllocator indexAllocator;
 
 	int lastPlayerChunkX = -999999;
 	int lastPlayerChunkZ = -999999;

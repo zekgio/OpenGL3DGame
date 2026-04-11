@@ -3,38 +3,66 @@
 #include <cmath>
 #include <vector>
 
+static void uploadMesh(World* world, GLuint globalSSBO, VRAMAllocator& allocator,
+	std::unordered_map<glm::ivec2, std::unique_ptr<ChunkModel>, ivec2Hash>& chunkModels,
+	glm::ivec2 pos, Chunk* chunk,
+	Chunk* negX, Chunk* posX, Chunk* negZ, Chunk* posZ,
+	MeshData* precalculatedMesh = nullptr)
+{
+	auto modelIt = chunkModels.find(pos);
+	if (modelIt != chunkModels.end() && modelIt->second && !modelIt->second->meshes.empty()) {
+		ChunkMesh* old = modelIt->second->meshes[0].get();
+		allocator.free(old->first, old->faceCount);
+	}
+
+	MeshData mesh;
+	if (precalculatedMesh != nullptr) {
+		mesh = std::move(*precalculatedMesh);
+	}
+	else {
+		if (chunk->isLOD) {
+			mesh = chunk->buildLODMesh(negX, posX, negZ, posZ);
+		}
+		else {
+			mesh = chunk->buildMesh(negX, posX, negZ, posZ);
+		}
+	}
+
+	ChunkMesh* newMeshPtr = new ChunkMesh();
+	newMeshPtr->faceCount = mesh.vertices.size();
+	newMeshPtr->first = 0;
+
+	if (mesh.vertices.size() > 0) {
+		size_t offset = allocator.allocate(mesh.vertices.size());
+		newMeshPtr->first = offset;
+		glBindBuffer(GL_SHADER_STORAGE_BUFFER, globalSSBO);
+		glBufferSubData(GL_SHADER_STORAGE_BUFFER, offset * sizeof(ChunkVertex),
+			mesh.vertices.size() * sizeof(ChunkVertex), mesh.vertices.data());
+	}
+
+	std::vector<ChunkMesh*> meshesToPass = { newMeshPtr };
+	chunkModels[pos] = std::make_unique<ChunkModel>(
+		glm::vec3(pos.x * Constants::World::CHUNK_WIDTH, 0.f, pos.y * Constants::World::CHUNK_DEPTH),
+		meshesToPass, mesh.minY, mesh.maxY
+	);
+}
+
 // Save references to resources for chunk model generation
 World::World(Material* mat, Texture* atlas, Texture* spec)
 	: terrainMaterial(mat), atlasTex(atlas), atlasSpecTex(spec),
-	vertexAllocator(300000000), indexAllocator(450000000)
+	vertexAllocator(500000000) // Around 4GB
 {
-	// Estimated Max Dimensions (Render Distance 100)
-	const size_t MAX_VERTICES = 300000000;
-	const size_t MAX_INDICES =  450000000;
-
-	// Create global buffers (VAO, VBO, EBO, DIB)
-	glCreateVertexArrays(1, &this->globalVAO);
-	glGenBuffers(1, &this->globalVBO);
-	glGenBuffers(1, &this->globalEBO);
+	// Create global buffers (VAO, SSBO, DIB)
+	glCreateVertexArrays(1, &this->emptyVAO);
+	glGenBuffers(1, &this->globalSSBO);
 	glGenBuffers(1, &this->globalDIB);
 
-	glBindVertexArray(this->globalVAO);
-
-	// Pre-allocate VBO
-	glBindBuffer(GL_ARRAY_BUFFER, this->globalVBO);
-	glBufferData(GL_ARRAY_BUFFER, MAX_VERTICES * sizeof(ChunkVertex), nullptr, GL_DYNAMIC_DRAW);
-
-	// Setup Attributes
-	glVertexAttribIPointer(0, 1, GL_UNSIGNED_INT, sizeof(ChunkVertex), (void*)offsetof(ChunkVertex, data));
-	glEnableVertexAttribArray(0);
-	glVertexAttribIPointer(1, 2, GL_SHORT, sizeof(ChunkVertex), (void*)offsetof(ChunkVertex, chunkX));
-	glEnableVertexAttribArray(1);
-
-	// Pre-allocate EBO
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->globalEBO);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, MAX_INDICES * sizeof(GLuint), nullptr, GL_DYNAMIC_DRAW);
-
-	glBindVertexArray(0);
+	// Pre-allocate SSBO
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, this->globalSSBO);
+	glBufferData(GL_SHADER_STORAGE_BUFFER, 500000000 * sizeof(ChunkVertex), nullptr, GL_DYNAMIC_DRAW);
+	// Bind l'SSBO to binding point 0
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, this->globalSSBO);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
 	int numThreads = 4;
 	for (int i = 0; i < numThreads; ++i)
@@ -51,6 +79,10 @@ World::~World()
 
 	this->chunkModels.clear();
 	this->chunks.clear();
+
+	glDeleteVertexArrays(1, &this->emptyVAO);
+	glDeleteBuffers(1, &this->globalSSBO);
+	glDeleteBuffers(1, &this->globalDIB);
 }
 
 void World::update(glm::vec3 playerPos)
@@ -70,17 +102,19 @@ void World::update(glm::vec3 playerPos)
 			glm::ivec2 pos = it->first; // pos.x = ChunkX, pos.y = ChunkZ
 
 			// Delete if out of render distance
-			if (std::abs(pos.x - playerChunkX) > this->renderDistance ||
-				std::abs(pos.y - playerChunkZ) > this->renderDistance)
+			float dx = (float)(pos.x - playerChunkX);
+			float dz = (float)(pos.y - playerChunkZ);
+			float maxDist = (float)this->renderDistance;
+
+			if ((dx * dx + dz * dz) > (maxDist * maxDist))
 			{
 				auto modelIt = this->chunkModels.find(pos);
 				if (modelIt != this->chunkModels.end() && modelIt->second != nullptr && !modelIt->second->meshes.empty())
 				{
 					ChunkMesh* cMesh = modelIt->second->meshes[0].get();
-					this->vertexAllocator.free(cMesh->baseVertex, cMesh->vertexCount);
-					this->indexAllocator.free(cMesh->firstIndex, cMesh->indexCount);
+					this->vertexAllocator.free(cMesh->first, cMesh->faceCount);
+					this->chunkModels.erase(pos);
 				}
-				this->chunkModels.erase(pos);
 
 				// Remove chunk from its Macro-Region
 				glm::ivec2 regionPos((int)std::floor((float)pos.x / REGION_SIZE), (int)std::floor((float)pos.y / REGION_SIZE));
@@ -97,16 +131,27 @@ void World::update(glm::vec3 playerPos)
 		}
 
 		// 3. Load new chunks within render distance
-		for (int x = -this->renderDistance; x <= this->renderDistance; ++x)
+		int searchRadius = this->renderDistance;
+		float maxDistSq = (float)(searchRadius * searchRadius);
+		float lodDistSq = (float)(Constants::World::LOD_DISTANCE * Constants::World::LOD_DISTANCE);
+
+		for (int x = -searchRadius; x <= searchRadius; ++x)
 		{
-			bool isOutsideLodX = (std::abs(x) > Constants::World::LOD_DISTANCE);
 			int posX = playerChunkX + x;
 
-			for (int z = -this->renderDistance; z <= this->renderDistance; ++z)
+			for (int z = -searchRadius; z <= searchRadius; ++z)
 			{
-				glm::ivec2 pos(posX, playerChunkZ + z);
-				bool needsLOD = (isOutsideLodX || std::abs(z) > Constants::World::LOD_DISTANCE);
+				float dx = (float)x;
+				float dz = (float)z;
+				float distSq = dx * dx + dz * dz;
+				// Cut corners
+				if (distSq > maxDistSq) {
+					continue;
+				}
 
+				glm::ivec2 pos(posX, playerChunkZ + z);
+				bool needsLOD = (distSq > lodDistSq);
+				
 				auto it = this->chunks.find(pos);
 
 				// If not existing, create placeholder and queue for loading
@@ -127,8 +172,7 @@ void World::update(glm::vec3 playerPos)
 						if (modelIt != this->chunkModels.end() && modelIt->second != nullptr && !modelIt->second->meshes.empty())
 						{
 							ChunkMesh* cMesh = modelIt->second->meshes[0].get();
-							this->vertexAllocator.free(cMesh->baseVertex, cMesh->vertexCount);
-							this->indexAllocator.free(cMesh->firstIndex, cMesh->indexCount);
+							this->vertexAllocator.free(cMesh->first, cMesh->faceCount);
 							this->chunkModels.erase(pos);
 						}
 
@@ -155,40 +199,38 @@ void World::update(glm::vec3 playerPos)
 			// Check player position again to avoid loading chunks that are now out of range
 			if (this->chunks.find(result.pos) != this->chunks.end())
 			{
-				// Save real chunk data
 				this->chunks[result.pos] = std::move(result.chunk);
 
-				size_t vOffset = this->vertexAllocator.allocate(result.meshData.vertices.size());
-				size_t iOffset = this->indexAllocator.allocate(result.meshData.indices.size());
+				auto getNeighbor = [&](int dx, int dz) -> Chunk* {
+					auto it = this->chunks.find(glm::ivec2(result.pos.x + dx, result.pos.y + dz));
+					return (it != this->chunks.end() && it->second) ? it->second.get() : nullptr;
+					};
 
-				// Now on main thread, call OpenGL
-				ChunkMesh* newMeshPtr = new ChunkMesh();
-				newMeshPtr->baseVertex = vOffset;
-				newMeshPtr->firstIndex = iOffset;
-				newMeshPtr->indexCount = result.meshData.indices.size();
-				newMeshPtr->vertexCount = result.meshData.vertices.size();
+				Chunk* negX = getNeighbor(-1, 0);
+				Chunk* posX = getNeighbor(1, 0);
+				Chunk* negZ = getNeighbor(0, -1);
+				Chunk* posZ = getNeighbor(0, 1);
 
-				// Direct State Access calls to update only the modified portion of the global buffers
-				glBindBuffer(GL_ARRAY_BUFFER, this->globalVBO);
-				glBufferSubData(GL_ARRAY_BUFFER, vOffset * sizeof(ChunkVertex),
-					result.meshData.vertices.size() * sizeof(ChunkVertex), result.meshData.vertices.data());
+				uploadMesh(this, this->globalSSBO, this->vertexAllocator, this->chunkModels,
+					result.pos, this->chunks[result.pos].get(), negX, posX, negZ, posZ, &result.meshData);
 
-				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->globalEBO);
-				glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, iOffset * sizeof(GLuint),
-					result.meshData.indices.size() * sizeof(GLuint), result.meshData.indices.data());
-
-				std::vector<ChunkMesh*> meshesToPass;
-				meshesToPass.push_back(newMeshPtr);
-
-				this->chunkModels[result.pos] = std::make_unique<ChunkModel>(
-					glm::vec3(result.pos.x * Constants::World::CHUNK_WIDTH, 0.f, result.pos.y * Constants::World::CHUNK_DEPTH),
-					meshesToPass, result.meshData.minY, result.meshData.maxY
-				);
+				// Re-mesh neighbors so their border faces get culled against the new chunk
+				const glm::ivec2 neighborOffsets[] = { {-1,0},{1,0},{0,-1},{0,1} };
+				for (const auto& off : neighborOffsets) {
+					glm::ivec2 npos = result.pos + off;
+					auto nit = this->chunks.find(npos);
+					if (nit != this->chunks.end() && nit->second) {
+						auto nN = [&](int dx, int dz) -> Chunk* {
+							auto it2 = this->chunks.find(glm::ivec2(npos.x + dx, npos.y + dz));
+							return (it2 != this->chunks.end() && it2->second) ? it2->second.get() : nullptr;
+							};
+						uploadMesh(this, this->globalSSBO, this->vertexAllocator, this->chunkModels,
+							npos, nit->second.get(), nN(-1, 0), nN(1, 0), nN(0, -1), nN(0, 1), nullptr);
+					}
+				}
 
 				glm::ivec2 regionPos((int)std::floor((float)result.pos.x / REGION_SIZE), (int)std::floor((float)result.pos.y / REGION_SIZE));
-
 				if (this->regions.find(regionPos) == this->regions.end()) {
-					// Initialize static bounds of the region
 					glm::vec3 minP(regionPos.x * REGION_SIZE * Constants::World::CHUNK_WIDTH, 0.f, regionPos.y * REGION_SIZE * Constants::World::CHUNK_DEPTH);
 					glm::vec3 maxP(minP.x + (REGION_SIZE * Constants::World::CHUNK_WIDTH), Constants::World::CHUNK_HEIGHT, minP.z + (REGION_SIZE * Constants::World::CHUNK_DEPTH));
 					this->regions[regionPos] = Region(minP, maxP);
@@ -234,14 +276,13 @@ void World::render(Shader* shader, const glm::mat4& projectionViewMatrix)
 					if (frustum.isBoxInFrustum(minP, maxP))
 					{
 						ChunkMesh* cMesh = modelIt->second->meshes[0].get();
-						if (cMesh->indexCount > 0)
+						if (cMesh->faceCount > 0)
 						{
 							indirectCommands.push_back({
-								cMesh->indexCount,
-								1,
-								cMesh->firstIndex,
-								cMesh->baseVertex,
-								0
+								cMesh->faceCount * 6,       // 6 virtual vertices per face
+								1,                          // instanceCount
+								cMesh->first * 6,			// initial vertex offset
+								0                           // baseInstance
 								});
 						}
 					}
@@ -253,18 +294,18 @@ void World::render(Shader* shader, const glm::mat4& projectionViewMatrix)
 	// Send and execute AZDO
 	if (!indirectCommands.empty())
 	{
-		glBindVertexArray(this->globalVAO);
+		glBindVertexArray(this->emptyVAO);
 		glBindBuffer(GL_DRAW_INDIRECT_BUFFER, this->globalDIB);
-		
-		size_t requiredSize = indirectCommands.size() * sizeof(DrawElementsIndirectCommand);
+
+		size_t requiredSize = indirectCommands.size() * sizeof(DrawArraysIndirectCommand);
 		if (requiredSize > this->dibCapacity)
 		{
-			// Only reallocate when we need more space
-			this->dibCapacity = requiredSize * 2; // overallocate to avoid frequent resizes
+			this->dibCapacity = requiredSize * 2;
 			glBufferData(GL_DRAW_INDIRECT_BUFFER, this->dibCapacity, nullptr, GL_DYNAMIC_DRAW);
 		}
 		glBufferSubData(GL_DRAW_INDIRECT_BUFFER, 0, requiredSize, this->indirectCommands.data());
-		glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, (void*)0, this->indirectCommands.size(), 0);
+
+		glMultiDrawArraysIndirect(GL_TRIANGLES, (void*)0, this->indirectCommands.size(), 0);
 
 		glBindVertexArray(0);
 	}
@@ -335,53 +376,36 @@ void World::setBlock(int worldX, int worldY, int worldZ, uint8_t type)
 	glm::ivec2 chunkPos(chunkX, chunkZ);
 	auto it = this->chunks.find(chunkPos);
 
-	if (it != this->chunks.end())
+	if (it != this->chunks.end() && it->second)
 	{
 		int localX = worldX - (chunkX * Constants::World::CHUNK_WIDTH);
 		int localZ = worldZ - (chunkZ * Constants::World::CHUNK_DEPTH);
 
-		// Update block type in the chunk
 		it->second->setBlock(localX, worldY, localZ, type);
 
-		auto modelIt = this->chunkModels.find(chunkPos);
-		if (modelIt != this->chunkModels.end() && modelIt->second != nullptr && !modelIt->second->meshes.empty())
-		{
-			ChunkMesh* old = modelIt->second->meshes[0].get();
-			this->vertexAllocator.free(old->baseVertex, old->vertexCount);
-			this->indexAllocator.free(old->firstIndex, old->indexCount);
+		auto getNeighbor = [&](int dx, int dz) -> Chunk* {
+			auto it2 = this->chunks.find(glm::ivec2(chunkX + dx, chunkZ + dz));
+			return (it2 != this->chunks.end() && it2->second) ? it2->second.get() : nullptr;
+			};
+
+		uploadMesh(this, this->globalSSBO, this->vertexAllocator, this->chunkModels,
+			chunkPos, it->second.get(),
+			getNeighbor(-1, 0), getNeighbor(1, 0), getNeighbor(0, -1), getNeighbor(0, 1));
+
+		int dx = (localX == 0) ? -1 : (localX == Constants::World::CHUNK_WIDTH - 1) ? 1 : 0;
+		int dz = (localZ == 0) ? -1 : (localZ == Constants::World::CHUNK_DEPTH - 1) ? 1 : 0;
+		if (dx != 0 || dz != 0) {
+			glm::ivec2 npos(chunkX + dx, chunkZ + dz);
+			auto nit = this->chunks.find(npos);
+			if (nit != this->chunks.end() && nit->second) {
+				auto nN = [&](int ddx, int ddz) -> Chunk* {
+					auto it2 = this->chunks.find(glm::ivec2(npos.x + ddx, npos.y + ddz));
+					return (it2 != this->chunks.end() && it2->second) ? it2->second.get() : nullptr;
+					};
+				uploadMesh(this, this->globalSSBO, this->vertexAllocator, this->chunkModels,
+					npos, nit->second.get(), nN(-1, 0), nN(1, 0), nN(0, -1), nN(0, 1));
+			}
 		}
-
-		// Reconstruct the mesh for the chunk
-		MeshData newMesh = it->second->buildMesh();
-
-		size_t vOffset = this->vertexAllocator.allocate(newMesh.vertices.size());
-		size_t iOffset = this->indexAllocator.allocate(newMesh.indices.size());
-
-		ChunkMesh* newMeshPtr = new ChunkMesh();
-		newMeshPtr->indexCount = newMesh.indices.size();
-		newMeshPtr->baseVertex = vOffset;
-		newMeshPtr->firstIndex = iOffset;
-		newMeshPtr->vertexCount = newMesh.vertices.size();
-
-		// Direct State Access calls to update only the modified portion of the global buffers
-		glBindBuffer(GL_ARRAY_BUFFER, this->globalVBO);
-		glBufferSubData(GL_ARRAY_BUFFER, vOffset * sizeof(ChunkVertex),
-			newMesh.vertices.size() * sizeof(ChunkVertex), newMesh.vertices.data());
-
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->globalEBO);
-		glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, iOffset * sizeof(GLuint),
-			newMesh.indices.size() * sizeof(GLuint), newMesh.indices.data());
-
-		std::vector<ChunkMesh*> meshesToPass;
-		meshesToPass.push_back(newMeshPtr);
-
-		// Substitute the old model
-		this->chunkModels[chunkPos] = std::make_unique<ChunkModel>(
-			glm::vec3(chunkPos.x * Constants::World::CHUNK_WIDTH, 0.f, chunkPos.y * Constants::World::CHUNK_DEPTH),
-			meshesToPass,
-			newMesh.minY,
-			newMesh.maxY
-		);
 	}
 }
 

@@ -39,7 +39,7 @@ void Game::initWindow(const char* title, bool resizable)
 	glfwGetFramebufferSize(this->window.get(), &this->frameBufferW, &this->frameBufferH);
 	glViewport(0, 0, this->frameBufferW, this->frameBufferH);
 	glfwMakeContextCurrent(this->window.get()); // Important for glew
-	glfwSwapInterval(1); // if zero no vsync for benchmarking, if 1 vsync enabled
+	glfwSwapInterval(0); // if zero no vsync for benchmarking, if 1 vsync enabled
 	// TIMESTAMP OF IMPROVEMENTS (referred to release with 17 render distance without vsync, 5090rtx):
 	// After Adding Benchmark mode:			avg fps: 234.8    avg ms: 4.258
 	// After Adding Greedy Meshing:			avg fps: 240.0    avg ms: 4.167
@@ -99,6 +99,10 @@ void Game::initShaders()
 	this->shaders.push_back(
 		std::make_unique<Shader>(this->GL_VERSION_MAJOR, this->GL_VERSION_MINOR,
 			"resources/vertex_icon.glsl", "resources/fragment_icon.glsl")
+	);
+	this->shaders.push_back(
+		std::make_unique<Shader>(this->GL_VERSION_MAJOR, this->GL_VERSION_MINOR,
+			"resources/vertex_wireframe.glsl", "resources/fragment_wireframe.glsl")
 	);
 }
 
@@ -347,10 +351,12 @@ void Game::render()
 		this->window.get(), this->shaders[Constants::GameEnums::ShaderEnum::SHADER_CORE_PROGRAM].get(),
 		this->shaders[Constants::GameEnums::ShaderEnum::SHADER_UI].get(),
 		this->shaders[Constants::GameEnums::ShaderEnum::SHADER_ICON].get(),
+		this->shaders[Constants::GameEnums::ShaderEnum::SHADER_WIREFRAME].get(),
 		this->textures[Constants::GameEnums::TextureEnum::TEX_ATLAS].get(),
 		inputHandler->activeSlot, inputHandler->hotbarBlocks,
 		inputHandler->isLookingAtBlock, inputHandler->targetBlockPos,
-		this->dirLights[0]->getColor(), this->pointLights[0]->getColor()
+		this->dirLights[0]->getColor(), this->pointLights[0]->getColor(),
+		projView
 	);
 
 	glfwSwapBuffers(this->window.get());

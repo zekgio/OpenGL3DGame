@@ -185,10 +185,8 @@ private:
 class ChunkMesh
 {
 public:
-	GLuint baseVertex = 0;
-	GLuint firstIndex = 0;
-	GLuint indexCount = 0;
-	GLuint vertexCount = 0;
+	GLuint first = 0;
+	GLuint faceCount = 0;
 
 	ChunkMesh() = default;
 	~ChunkMesh() = default;
@@ -198,8 +196,8 @@ public:
 class StandaloneVoxelMesh
 {
 private:
-	GLuint VAO, VBO, EBO;
-	size_t indexCount;
+	GLuint VAO, VBO;
+	size_t faceCount;
 	glm::vec3 position, rotation, scaleVec;
 	glm::mat4 ModelMatrix;
 
@@ -213,25 +211,20 @@ private:
 	}
 
 public:
-	StandaloneVoxelMesh(ChunkVertex* vertexArray, size_t nrOfVertices, GLuint* indexArray, size_t nrOfIndices)
+	StandaloneVoxelMesh(ChunkVertex* vertexArray, size_t nrOfFaces)
 		: position(0.f), rotation(0.f), scaleVec(1.f)
 	{
-		this->indexCount = nrOfIndices;
+		this->faceCount = nrOfFaces;
 		glCreateVertexArrays(1, &this->VAO);
 		glBindVertexArray(this->VAO);
 
 		glGenBuffers(1, &this->VBO);
 		glBindBuffer(GL_ARRAY_BUFFER, this->VBO);
-		glBufferData(GL_ARRAY_BUFFER, nrOfVertices * sizeof(ChunkVertex), vertexArray, GL_STATIC_DRAW);
+		glBufferData(GL_ARRAY_BUFFER, nrOfFaces * sizeof(ChunkVertex), vertexArray, GL_STATIC_DRAW);
 
 		glVertexAttribIPointer(0, 1, GL_UNSIGNED_INT, sizeof(ChunkVertex), (void*)offsetof(ChunkVertex, data));
 		glEnableVertexAttribArray(0);
-		glVertexAttribIPointer(1, 2, GL_SHORT, sizeof(ChunkVertex), (void*)offsetof(ChunkVertex, chunkX));
-		glEnableVertexAttribArray(1);
-
-		glGenBuffers(1, &this->EBO);
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->EBO);
-		glBufferData(GL_ELEMENT_ARRAY_BUFFER, nrOfIndices * sizeof(GLuint), indexArray, GL_STATIC_DRAW);
+		glVertexAttribDivisor(0, 1); // Advance to the next vertex data for each instance
 
 		glBindVertexArray(0);
 		this->updateModelMatrix();
@@ -240,7 +233,6 @@ public:
 	~StandaloneVoxelMesh() {
 		glDeleteVertexArrays(1, &this->VAO);
 		glDeleteBuffers(1, &this->VBO);
-		glDeleteBuffers(1, &this->EBO);
 	}
 
 	void setPosition(glm::vec3 pos) { this->position = pos; this->updateModelMatrix(); }
@@ -250,7 +242,7 @@ public:
 	void render(Shader* shader) {
 		shader->setMat4fv(this->ModelMatrix, "ModelMatrix");
 		glBindVertexArray(this->VAO);
-		glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(this->indexCount), GL_UNSIGNED_INT, 0);
+		glDrawArraysInstanced(GL_TRIANGLES, 0, 6, static_cast<GLsizei>(this->faceCount));
 		glBindVertexArray(0);
 	}
 };
