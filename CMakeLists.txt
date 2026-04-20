@@ -55,6 +55,28 @@ if (FastNoiseLite_ADDED)
 endif()
 list(APPEND LIBS FastNoiseLite::FastNoiseLite)
 
+# --- Lua ---
+CPMAddPackage(
+    NAME lua
+    VERSION 5.4.6
+    URL "https://www.lua.org/ftp/lua-5.4.6.tar.gz"
+    DOWNLOAD_ONLY YES
+)
+if(lua_ADDED)
+    file(GLOB LUA_SOURCES "${lua_SOURCE_DIR}/src/*.c")
+    list(REMOVE_ITEM LUA_SOURCES "${lua_SOURCE_DIR}/src/lua.c" "${lua_SOURCE_DIR}/src/luac.c")
+    # Create static library
+    add_library(lua STATIC ${LUA_SOURCES})
+    # Export headers
+    target_include_directories(lua PUBLIC "${lua_SOURCE_DIR}/src")
+endif()
+
+list(APPEND LIBS lua)
+
+# --- sol2 ---
+CPMAddPackage("gh:ThePhD/sol2#v3.3.1")
+list(APPEND LIBS sol2)
+
 # --- OpenGL ---
 find_package(OpenGL REQUIRED)
 
@@ -84,12 +106,15 @@ add_executable(OpenGL3DGame
     "InputHandler.cpp"
     "UIRenderer.h"
     "UIRenderer.cpp"
+    "BlockData.h"
+    "BlockRegistry.h"
+    "ModManager.h"
+    "ModManager.cpp"
 )
 
 target_include_directories(OpenGL3DGame PRIVATE
     "${glew_SOURCE_DIR}/include"
     "${glew-cmake_SOURCE_DIR}"
-    
     ${SOIL2_SOURCE_DIR}/src
 )
 
@@ -113,6 +138,14 @@ add_custom_target(CopyImages
     "$<TARGET_FILE_DIR:OpenGL3DGame>/images/"
 )
 add_dependencies(OpenGL3DGame CopyImages)
+
+# --- Copy MODS folder ---
+add_custom_target(CopyMods
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+    "${CMAKE_CURRENT_SOURCE_DIR}/mods"
+    "$<TARGET_FILE_DIR:OpenGL3DGame>/mods/"
+)
+add_dependencies(OpenGL3DGame CopyMods)
 
 if(MSVC)
     # Force PDB generation

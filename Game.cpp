@@ -1,5 +1,6 @@
 #include "Game.h"
 #include "OBJLoader.h"
+#include "ModManager.h"
 
 // Private Functions
 void Game::initCamera()
@@ -47,6 +48,7 @@ void Game::initWindow(const char* title, bool resizable)
 	// Removed setVec2f from chunkOffset:   avg fps: 2673.6   avg ms: 0.374
 	// Better frustum (fixed Bounding box): avg fps: 3037.4   avg ms: 0.329
 	// LOD, AZDO, DIB, VRAMA, light vertex: avg fps: 3350.9   avg ms: 0.298
+	// VerPulling, no Greedy, LOD rework:   avg fps: 3499.3   avg ms: 0.286
 }
 
 void Game::initGLEW()
@@ -122,6 +124,8 @@ void Game::initMaterials()
 
 void Game::initModels()
 { 
+	ModManager::loadBlocks("mods\\blocks");
+
 	int myWorldSeed = static_cast<int>(std::time(nullptr));
 	Chunk::worldSeed = myWorldSeed;
 

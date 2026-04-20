@@ -52,7 +52,7 @@ public:
 
 	void setBlock(int x, int y, int z, uint8_t type);
 
-	int getTextureIndex(uint8_t type, FaceDirection face);
+	int getTextureIndex(uint8_t type, FaceDirection face, const auto& registry);
 
 	MeshData buildMesh(Chunk* negX = nullptr, Chunk* posX = nullptr, Chunk* negZ = nullptr, Chunk* posZ = nullptr);
 	MeshData buildLODMesh(Chunk* negX = nullptr, Chunk* posX = nullptr, Chunk* negZ = nullptr, Chunk* posZ = nullptr);

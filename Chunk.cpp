@@ -1,4 +1,6 @@
 #include "Chunk.h"
+#include "BlockData.h"
+#include "BlockRegistry.h"
 
 int Chunk::worldSeed = 0;
 
@@ -93,17 +95,8 @@ void Chunk::setBlock(int x, int y, int z, uint8_t type) {
 	blocks[getIndex(x, y, z)] = type;
 }
 
-int Chunk::getTextureIndex(uint8_t type, FaceDirection face) {
-	if (type == Constants::BlockType::DIRT) return 2;
-	if (type == Constants::BlockType::STONE) return 3;
-	if (type == Constants::BlockType::BEDROCK) return 4;
-
-	if (type == Constants::BlockType::GRASS) {
-		if (face == FaceDirection::TOP) return 0;
-		if (face == FaceDirection::BOTTOM) return 2;
-		return 1;
-	}
-	return 2; // Generic fallback
+int Chunk::getTextureIndex(uint8_t type, FaceDirection face, const auto& registry) {
+	return registry.getBlock(type).textureIndices[static_cast<int>(face)];
 }
 
 MeshData Chunk::buildMesh(Chunk* negX, Chunk* posX, Chunk* negZ, Chunk* posZ)
@@ -111,6 +104,8 @@ MeshData Chunk::buildMesh(Chunk* negX, Chunk* posX, Chunk* negZ, Chunk* posZ)
 	this->isLOD = false;
 	MeshData meshData;
 	meshData.vertices.reserve(3000);
+
+	const auto& registry = BlockRegistry::get();
 
 	const int W = Constants::World::CHUNK_WIDTH;
 	const int H = Constants::World::CHUNK_HEIGHT;
@@ -130,18 +125,18 @@ MeshData Chunk::buildMesh(Chunk* negX, Chunk* posX, Chunk* negZ, Chunk* posZ)
 				uint8_t blockType = getBlock(x, y, z);
 				if (blockType == Constants::BlockType::AIR) continue;
 
-				if (getB(x, y + 1, z) == Constants::BlockType::AIR)
-					meshData.vertices.push_back(ChunkVertex::pack(this->chunkX, this->chunkZ, x, y, z, getTextureIndex(blockType, FaceDirection::TOP), 4));
-				if (getB(x, y - 1, z) == Constants::BlockType::AIR)
-					meshData.vertices.push_back(ChunkVertex::pack(this->chunkX, this->chunkZ, x, y, z, getTextureIndex(blockType, FaceDirection::BOTTOM), 5));
-				if (getB(x + 1, y, z) == Constants::BlockType::AIR)
-					meshData.vertices.push_back(ChunkVertex::pack(this->chunkX, this->chunkZ, x, y, z, getTextureIndex(blockType, FaceDirection::RIGHT), 3));
-				if (getB(x - 1, y, z) == Constants::BlockType::AIR)
-					meshData.vertices.push_back(ChunkVertex::pack(this->chunkX, this->chunkZ, x, y, z, getTextureIndex(blockType, FaceDirection::LEFT), 2));
-				if (getB(x, y, z + 1) == Constants::BlockType::AIR)
-					meshData.vertices.push_back(ChunkVertex::pack(this->chunkX, this->chunkZ, x, y, z, getTextureIndex(blockType, FaceDirection::FRONT), 0));
-				if (getB(x, y, z - 1) == Constants::BlockType::AIR)
-					meshData.vertices.push_back(ChunkVertex::pack(this->chunkX, this->chunkZ, x, y, z, getTextureIndex(blockType, FaceDirection::BACK), 1));
+				if (registry.getBlock(getB(x, y + 1, z)).isTransparent)
+					meshData.vertices.push_back(ChunkVertex::pack(this->chunkX, this->chunkZ, x, y, z, getTextureIndex(blockType, FaceDirection::TOP, registry), 4));
+				if (registry.getBlock(getB(x, y - 1, z)).isTransparent)
+					meshData.vertices.push_back(ChunkVertex::pack(this->chunkX, this->chunkZ, x, y, z, getTextureIndex(blockType, FaceDirection::BOTTOM, registry), 5));
+				if (registry.getBlock(getB(x + 1, y, z)).isTransparent)
+					meshData.vertices.push_back(ChunkVertex::pack(this->chunkX, this->chunkZ, x, y, z, getTextureIndex(blockType, FaceDirection::RIGHT, registry), 3));
+				if (registry.getBlock(getB(x - 1, y, z)).isTransparent)
+					meshData.vertices.push_back(ChunkVertex::pack(this->chunkX, this->chunkZ, x, y, z, getTextureIndex(blockType, FaceDirection::LEFT, registry), 2));
+				if (registry.getBlock(getB(x, y, z + 1)).isTransparent)
+					meshData.vertices.push_back(ChunkVertex::pack(this->chunkX, this->chunkZ, x, y, z, getTextureIndex(blockType, FaceDirection::FRONT, registry), 0));
+				if (registry.getBlock(getB(x, y, z - 1)).isTransparent)
+					meshData.vertices.push_back(ChunkVertex::pack(this->chunkX, this->chunkZ, x, y, z, getTextureIndex(blockType, FaceDirection::BACK, registry), 1));
 			}
 		}
 	}
@@ -163,6 +158,8 @@ MeshData Chunk::buildLODMesh(Chunk* negX, Chunk* posX, Chunk* negZ, Chunk* posZ)
 	this->isLOD = true;
 	MeshData meshData;
 	meshData.vertices.reserve(1000); // Way less than normal mesh
+
+	const auto& registry = BlockRegistry::get();
 
 	const int W = Constants::World::CHUNK_WIDTH;
 	const int H = Constants::World::CHUNK_HEIGHT;
@@ -186,18 +183,18 @@ MeshData Chunk::buildLODMesh(Chunk* negX, Chunk* posX, Chunk* negZ, Chunk* posZ)
 				// LOD flag inside Vertex
 				uint32_t lodY = y | 0x400;
 
-				if (getB(x, y + 2, z) == Constants::BlockType::AIR)
-					meshData.vertices.push_back(ChunkVertex::pack(this->chunkX, this->chunkZ, x, lodY, z, getTextureIndex(blockType, FaceDirection::TOP), 4));
-				if (getB(x, y - 2, z) == Constants::BlockType::AIR)
-					meshData.vertices.push_back(ChunkVertex::pack(this->chunkX, this->chunkZ, x, lodY, z, getTextureIndex(blockType, FaceDirection::BOTTOM), 5));
-				if (getB(x + 2, y, z) == Constants::BlockType::AIR)
-					meshData.vertices.push_back(ChunkVertex::pack(this->chunkX, this->chunkZ, x, lodY, z, getTextureIndex(blockType, FaceDirection::RIGHT), 3));
-				if (getB(x - 2, y, z) == Constants::BlockType::AIR)
-					meshData.vertices.push_back(ChunkVertex::pack(this->chunkX, this->chunkZ, x, lodY, z, getTextureIndex(blockType, FaceDirection::LEFT), 2));
-				if (getB(x, y, z + 2) == Constants::BlockType::AIR)
-					meshData.vertices.push_back(ChunkVertex::pack(this->chunkX, this->chunkZ, x, lodY, z, getTextureIndex(blockType, FaceDirection::FRONT), 0));
-				if (getB(x, y, z - 2) == Constants::BlockType::AIR)
-					meshData.vertices.push_back(ChunkVertex::pack(this->chunkX, this->chunkZ, x, lodY, z, getTextureIndex(blockType, FaceDirection::BACK), 1));
+				if (registry.getBlock(getB(x, y + 2, z)).isTransparent)
+					meshData.vertices.push_back(ChunkVertex::pack(this->chunkX, this->chunkZ, x, lodY, z, getTextureIndex(blockType, FaceDirection::TOP, registry), 4));
+				if (registry.getBlock(getB(x, y - 2, z)).isTransparent)
+					meshData.vertices.push_back(ChunkVertex::pack(this->chunkX, this->chunkZ, x, lodY, z, getTextureIndex(blockType, FaceDirection::BOTTOM, registry), 5));
+				if (registry.getBlock(getB(x + 2, y, z)).isTransparent)
+					meshData.vertices.push_back(ChunkVertex::pack(this->chunkX, this->chunkZ, x, lodY, z, getTextureIndex(blockType, FaceDirection::RIGHT, registry), 3));
+				if (registry.getBlock(getB(x - 2, y, z)).isTransparent)
+					meshData.vertices.push_back(ChunkVertex::pack(this->chunkX, this->chunkZ, x, lodY, z, getTextureIndex(blockType, FaceDirection::LEFT, registry), 2));
+				if (registry.getBlock(getB(x, y, z + 2)).isTransparent)
+					meshData.vertices.push_back(ChunkVertex::pack(this->chunkX, this->chunkZ, x, lodY, z, getTextureIndex(blockType, FaceDirection::FRONT, registry), 0));
+				if (registry.getBlock(getB(x, y, z - 2)).isTransparent)
+					meshData.vertices.push_back(ChunkVertex::pack(this->chunkX, this->chunkZ, x, lodY, z, getTextureIndex(blockType, FaceDirection::BACK, registry), 1));
 			}
 		}
 	}
